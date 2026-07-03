@@ -74,9 +74,9 @@ body.legal{
 }
 .legal__toc ol{margin:0;padding:0;list-style:none;counter-reset:toc;columns:2;column-gap:36px}
 .legal__toc li{counter-increment:toc;margin:0 0 .58rem;break-inside:avoid}
-.legal__toc li a{display:flex;gap:.7em;align-items:baseline;color:var(--ink);border:0;font-size:.96rem;line-height:1.35}
-.legal__toc li a::before{content:counter(toc);color:var(--red);font-weight:700;font-variant-numeric:tabular-nums;min-width:1.25em;flex:none}
-.legal__toc li a:hover{color:var(--red)}
+.legal__toc li a{display:flex;gap:.7em;align-items:baseline;color:var(--ink);border:0;font-size:.96rem;line-height:1.35;padding:.34rem .55rem;margin-inline:-.55rem;border-radius:9px;transition:background .18s var(--ease),color .18s var(--ease)}
+.legal__toc li a::before{content:counter(toc,decimal-leading-zero);color:var(--red);font-weight:700;font-variant-numeric:tabular-nums;min-width:1.9em;flex:none}
+.legal__toc li a:hover{color:var(--red);background:var(--light)}
 
 /* ---------- seções ---------- */
 .legal__section{margin:2.9rem 0 0;scroll-margin-top:84px}
