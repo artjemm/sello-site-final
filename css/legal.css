@@ -1,9 +1,10 @@
 /* =========================================================
    Sello — páginas legais (Política de Privacidade / Termos)
    Reaproveita tokens, fontes e o wordmark do css/sello.css.
-   Estética: documento editorial, leitura à esquerda, 1 accent.
+   Estética: documento editorial com energia Infatuation, marca Sello.
+   Coluna à esquerda · títulos de seção em Anton MAIÚSCULO · 1 accent.
    ========================================================= */
-:root{ --paper:#FBFBF9; --read:772px; --body-ink:#272D3A; }
+:root{ --paper:#FBFBF9; --read:800px; --body-ink:#272D3A; --rail:clamp(20px,8vw,124px); }
 
 body.legal{
   background:var(--paper);
@@ -22,13 +23,13 @@ body.legal{
   border-bottom:1px solid var(--line);
 }
 .lhead__inner{
-  max-width:var(--read);margin-inline:auto;
-  padding:15px clamp(20px,5vw,32px);
+  max-width:none;margin:0;
+  padding:16px clamp(20px,5vw,48px) 16px var(--rail);
   display:flex;align-items:center;justify-content:space-between;gap:24px;
 }
 .lhead__brand{display:flex;align-items:center}
 .lhead__mark{
-  display:block;height:23px;width:85px;background:var(--red);
+  display:block;height:27px;width:100px;background:var(--red);
   -webkit-mask:url(../assets/img/wordmark.svg) no-repeat left center/contain;
   mask:url(../assets/img/wordmark.svg) no-repeat left center/contain;
 }
@@ -41,20 +42,20 @@ body.legal{
 .lhead__back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
 .lhead__back:hover svg{transform:translateX(-2px)}
 
-/* ---------- article ---------- */
-.legal__main{padding:clamp(40px,7vw,76px) 0 0}
+/* ---------- article: coluna alinhada à esquerda, margem direita arejada ---------- */
+.legal__main{padding:clamp(48px,8vw,96px) 0 0}
 .legal__article{
-  max-width:var(--read);margin-inline:auto;
-  padding-inline:clamp(20px,5vw,32px);
+  max-width:var(--read);margin-left:var(--rail);margin-right:auto;
+  padding-right:clamp(20px,5vw,40px);
 }
 .legal__article .eyebrow{margin:0 0 .55rem}
 .legal__title{
   font-family:var(--font-disp);font-weight:400;text-transform:uppercase;
-  color:var(--ink);line-height:1.02;letter-spacing:.012em;
-  font-size:clamp(2.15rem,6vw,3.35rem);margin:0;
+  color:var(--ink);line-height:1.0;letter-spacing:.012em;
+  font-size:clamp(2.7rem,7.2vw,4.7rem);margin:0;
 }
 .legal__meta{font-family:var(--font-ui);color:var(--muted);font-size:.92rem;margin:1.05rem 0 0;letter-spacing:.005em}
-.legal__lede{font-size:clamp(1.06rem,1.5vw,1.2rem);line-height:1.62;color:var(--ink);margin:1.7rem 0 0;max-width:64ch}
+.legal__lede{font-size:clamp(1.1rem,1.6vw,1.28rem);line-height:1.6;color:var(--ink);margin:1.9rem 0 0;max-width:60ch}
 
 /* links no corpo do documento */
 .legal__article a:not(.lhead__back){
@@ -78,11 +79,11 @@ body.legal{
 .legal__toc li a::before{content:counter(toc,decimal-leading-zero);color:var(--red);font-weight:700;font-variant-numeric:tabular-nums;min-width:1.9em;flex:none}
 .legal__toc li a:hover{color:var(--red);background:var(--light)}
 
-/* ---------- seções ---------- */
-.legal__section{margin:2.9rem 0 0;scroll-margin-top:84px}
+/* ---------- seções: títulos em Anton MAIÚSCULO (o gesto editorial) ---------- */
+.legal__section{margin:clamp(2.9rem,5.5vw,4.4rem) 0 0;scroll-margin-top:92px}
 .legal__h2{
-  font-family:var(--font-body);font-weight:800;color:var(--ink);
-  font-size:clamp(1.22rem,2vw,1.46rem);line-height:1.25;letter-spacing:-.012em;margin:0 0 1rem;
+  font-family:var(--font-disp);font-weight:400;text-transform:uppercase;color:var(--ink);
+  font-size:clamp(1.7rem,3.4vw,2.6rem);line-height:1.04;letter-spacing:.014em;margin:0 0 1.2rem;
 }
 .legal__section p{margin:0 0 1rem;color:var(--body-ink)}
 .legal__section p:last-child{margin-bottom:0}
@@ -109,10 +110,10 @@ body.legal{
 .legal__note strong{color:var(--ink)}
 
 /* ---------- rodapé ---------- */
-.lfoot{margin-top:clamp(56px,9vw,108px);border-top:1px solid var(--line)}
+.lfoot{margin-top:clamp(64px,10vw,120px);border-top:1px solid var(--line)}
 .lfoot__inner{
-  max-width:var(--read);margin-inline:auto;
-  padding:32px clamp(20px,5vw,32px);
+  max-width:none;margin:0;
+  padding:32px clamp(20px,5vw,48px) 32px var(--rail);
   display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px;justify-content:space-between;
 }
 .lfoot__mark{
@@ -128,4 +129,5 @@ body.legal{
 @media (max-width:600px){
   .legal__toc ol{columns:1}
   .lfoot__inner{gap:14px}
+  .legal__title{font-size:clamp(2.4rem,12vw,3rem)}
 }
