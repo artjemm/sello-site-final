@@ -411,7 +411,12 @@
 
   /* ---------- download modal (todos os "BAIXAR APP" abrem o modal) ---------- */
   (function(){
-    var STORES = { ios: null, android: null }; // preencher os links quando o app publicar
+    // App publicado — links reais. Preencher aqui habilita os botões e força
+    // target="_blank" (abre em nova aba) em todas as páginas que têm o modal.
+    var STORES = {
+      ios: 'https://apps.apple.com/br/app/sello/id6791353216',
+      android: 'https://play.google.com/store/apps/details?id=com.sello.app'
+    };
     var modal = document.getElementById('dl-modal');
     if (!modal) return;
     var card = modal.querySelector('.dlm__card');
