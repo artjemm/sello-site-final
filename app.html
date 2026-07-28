@@ -22,9 +22,15 @@
       padding:32px 24px; text-align:center;
     }
     .wrap { width:100%; max-width:400px; }
-    .logo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:56px; }
-    .logo .star { width:56px; height:auto; }
-    .logo .word { height:44px; width:auto; }
+    .logo { display:flex; align-items:center; justify-content:center; margin-bottom:56px; }
+    /* Máscara: usa a forma do SVG como stencil e preenche de vermelho — assim o
+       logo fica vermelho mesmo o arquivo não tendo fill vermelho. */
+    .logo .word {
+      display:block; width:190px; height:52px;
+      background-color:var(--red);
+      -webkit-mask:url(assets/img/wordmark.svg) no-repeat center / contain;
+      mask:url(assets/img/wordmark.svg) no-repeat center / contain;
+    }
     h1 {
       font-family:'Anton',sans-serif; font-weight:400; text-transform:uppercase;
       font-size:38px; line-height:1.05; letter-spacing:.5px; color:var(--ink);
@@ -47,8 +53,7 @@
 <body>
   <div class="wrap">
     <div class="logo">
-      <img class="star" src="assets/img/seal.svg" alt="" decoding="async" onerror="this.style.display='none'" />
-      <img class="word" src="assets/img/wordmark.svg" alt="Sello" decoding="async" onerror="this.style.display='none'" />
+      <span class="word" role="img" aria-label="Sello"></span>
     </div>
 
     <h1>Viva a cidade através da <span class="accent">Gastronomia!</span></h1>
