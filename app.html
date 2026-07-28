@@ -66,5 +66,23 @@
 
     <a class="know" href="/">Conhecer o Sello</a>
   </div>
+
+  <script>
+    // A tela é sempre mostrada (sem redirect automático). Só detectamos o device
+    // para deixar a loja certa em cima: iPhone/iPad → App Store, Android → Google
+    // Play. Desktop mantém a ordem do design (App Store, Google Play).
+    (function () {
+      var ua = navigator.userAgent || navigator.vendor || '';
+      var isIOS = /iPad|iPhone|iPod/.test(ua) ||
+        (/Macintosh/.test(ua) && 'ontouchend' in document);
+      var isAndroid = /android/i.test(ua);
+      var stores = document.querySelector('.stores');
+      if (isAndroid && stores) {
+        stores.insertBefore(document.getElementById('android'), stores.firstChild);
+      } else if (isIOS && stores) {
+        stores.insertBefore(document.getElementById('ios'), stores.firstChild);
+      }
+    })();
+  </script>
 </body>
 </html>
