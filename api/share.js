@@ -39,6 +39,28 @@ function esc(s) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Extrai o identificador real de um endereço decorado.
+ *
+ *   z-deli-restaurante-delicatessen--r632  →  r632
+ *   mamma-mia--u-50e887fa-…                →  u-50e887fa-…
+ *   top-25-melhores                        →  top-25-melhores
+ *
+ * O app põe o nome antes do `--` só para o link ficar legível. Ler o que vem
+ * DEPOIS do último `--` significa que renomear um restaurante não invalida
+ * nenhum link já compartilhado — o pedaço bonito é descartável por construção.
+ */
+/** Guias como "Em alta no Sello" fariam "… no Sello no Sello". Corta a
+ *  repetição em vez de mexer nos títulos, que são editoriais. */
+function noSello(s) {
+  return `${s} no Sello`.replace(/( no Sello){2,}$/i, " no Sello");
+}
+
+function realId(slug) {
+  const i = slug.lastIndexOf('--');
+  return i === -1 ? slug : slug.slice(i + 2);
+}
+
 async function sb(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
@@ -50,14 +72,16 @@ async function sb(path) {
 
 /** Busca o conteúdo e devolve a cópia de cada tipo, já no formato da página.
  *  `deepLink` é o caminho equivalente dentro do app. */
-async function resolve(type, slug) {
+async function resolve(type, rawSlug) {
+  // O trecho bonito do endereço é enfeite; o identificador vem depois do `--`.
+  const slug = realId(rawSlug);
   if (type === 'r') {
     const r = await sb(
       `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=name,slug,hero_image&limit=1`,
     );
     if (!r) return null;
     return {
-      title: `Confira o ${r.name} no Sello`,
+      title: noSello(`Confira o ${r.name}`),
       description:
         'Descubra fotos, informações e tudo o que você precisa saber antes da sua próxima visita.',
       image: r.hero_image,
@@ -73,7 +97,7 @@ async function resolve(type, slug) {
     );
     if (!g) return null;
     return {
-      title: `Confira o guia ${g.title} no Sello`,
+      title: noSello(`Confira o guia ${g.title}`),
       description:
         'Uma curadoria editorial do Sello para descobrir restaurantes que realmente valem a visita.',
       image: g.cover,
@@ -97,7 +121,7 @@ async function resolve(type, slug) {
       : null;
     const at = owner?.username ? `@${owner.username}` : 'alguém';
     return {
-      title: `Confira a lista ${l.title} de ${at} no Sello`,
+      title: noSello(`Confira a lista ${l.title} de ${at}`),
       description: `Explore a seleção de restaurantes criada por ${at} e descubra novos lugares para conhecer.`,
       image: l.cover,
       heading: l.title,
@@ -112,7 +136,7 @@ async function resolve(type, slug) {
     );
     if (!u) return null;
     return {
-      title: `Confira o perfil de @${u.username} no Sello`,
+      title: noSello(`Confira o perfil de @${u.username}`),
       description: 'Explore suas listas, avaliações e restaurantes favoritos.',
       image: u.avatar_url,
       heading: u.name || `@${u.username}`,
