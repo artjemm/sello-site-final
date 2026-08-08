@@ -47,6 +47,10 @@
     }
     .store:active { background:#E7E7E7; }
     .store svg { width:22px; height:22px; flex:0 0 auto; }
+    #dica {
+      margin-top:20px; font-size:14px; line-height:1.5; color:#5B5B5B;
+    }
+    #dica strong { color:var(--ink); }
     .know { display:inline-block; margin-top:36px; color:var(--red); font-weight:700; font-size:16px; text-decoration:underline; text-underline-offset:3px; }
   </style>
 </head>
@@ -69,6 +73,11 @@
       </a>
     </div>
 
+    <p id="dica" hidden>
+      Não abriu? Toque em <strong>&#8943;</strong> no canto e escolha
+      <strong>Abrir no navegador</strong>.
+    </p>
+
     <a class="know" href="/">Conhecer o Sello</a>
   </div>
 
@@ -78,53 +87,66 @@
       var isIOS = /iPad|iPhone|iPod/.test(ua) ||
         (/Macintosh/.test(ua) && 'ontouchend' in document);
       var isAndroid = /android/i.test(ua);
+      // Instagram, Facebook, TikTok e LinkedIn abrem links num navegador
+      // próprio, embutido — é lá que a App Store não abre.
+      var embutido = /Instagram|FBAN|FBAV|musical_ly|Bytedance|TikTok|LinkedInApp/i.test(ua);
       var stores = document.querySelector('.stores');
       var ios = document.getElementById('ios');
       var android = document.getElementById('android');
+      var dica = document.getElementById('dica');
 
-      // Reordena para deixar a loja do aparelho em cima. Desktop mantém a
-      // ordem do design.
       if (isAndroid && stores) stores.insertBefore(android, stores.firstChild);
       else if (isIOS && stores) stores.insertBefore(ios, stores.firstChild);
 
-      /* ── Navegador interno do Instagram e do TikTok ───────────────────────
+      /* ── Por que este bloco existe ────────────────────────────────────────
        *
-       * O botão da Apple não abria quando o link chegava por esses apps — e só
-       * ali; no Safari sempre funcionou. Eles abrem o link num navegador
-       * embutido que RECUSA carregar a App Store por https: a navegação é
-       * engolida sem erro e sem nada acontecer.
+       * O botão da App Store não abre quando o link chega por Instagram ou
+       * TikTok. O do Google Play abre — e essa diferença é a pista: o navegador
+       * embutido NAVEGA bem (o Google Play é uma página web comum), mas recusa
+       * ENTREGAR o link ao aplicativo da App Store, que é o que o iOS tenta
+       * fazer com apps.apple.com.
        *
-       * A primeira tentativa (08/08) cancelava o toque e navegava por código
-       * para itms-apps://. Não funcionou, e o motivo importa: nesses
-       * navegadores, navegação POR CÓDIGO para esquema nativo é bloqueada. Só
-       * passa quando o próprio toque é a navegação.
+       * Duas tentativas já falharam, e cada uma ensinou algo:
+       *   1. itms-apps:// por código  → navegação por código para esquema
+       *      nativo é bloqueada nesses navegadores.
+       *   2. itms-apps:// no href     → o toque passou a ser a navegação, e
+       *      ainda assim não abriu: o esquema em si é recusado.
        *
-       * Por isso agora o esquema nativo entra no href, ainda no carregamento.
-       * O toque vira uma navegação comum e direta, que o sistema atende.
+       * Terceira abordagem, em camadas, da mais transparente à mais explícita:
        *
-       * O https fica guardado em data-web e volta como rede de segurança se, um
-       * segundo e meio depois, a página ainda estiver aqui — aparelho sem loja
-       * instalada, ou esquema recusado. Sem isso o botão poderia não fazer nada
-       * de novo, que é justamente o que estamos consertando.
+       *   a) x-safari-https:// — pede ao iOS para abrir a URL no Safari, fora
+       *      da moldura do app. É o caminho que costuma vencer esse bloqueio.
+       *   b) o https de sempre, 1,2s depois, se ainda estivermos aqui.
+       *   c) se 2,5s depois a página CONTINUAR visível, nada abriu: aí
+       *      mostramos a instrução de abrir no navegador. Preferimos dizer à
+       *      pessoa o que fazer a deixá-la tocando num botão morto.
+       *
+       * Fora dos navegadores embutidos nada disso roda: no Safari o link
+       * sempre funcionou.
        */
-      function nativo(link, url) {
-        if (!link) return;
-        var web = link.getAttribute('href');
-        link.setAttribute('data-web', web);
-        link.setAttribute('href', url);
-        link.addEventListener('click', function () {
-          var saiu = false;
-          var marcar = function () { saiu = true; };
-          window.addEventListener('pagehide', marcar);
-          document.addEventListener('visibilitychange', marcar);
+      if (isIOS && embutido && ios) {
+        var web = ios.getAttribute('href');
+        ios.setAttribute('href', 'x-safari-' + web);
+        ios.addEventListener('click', function () {
           setTimeout(function () {
-            if (!saiu && !document.hidden) window.location.href = web;
-          }, 1500);
+            if (!document.hidden) window.location.href = web;
+          }, 1200);
+          setTimeout(function () {
+            if (!document.hidden && dica) dica.removeAttribute('hidden');
+          }, 2500);
         });
       }
 
-      if (isIOS) nativo(ios, 'itms-apps://apps.apple.com/br/app/sello/id6791353216');
-      if (isAndroid) nativo(android, 'market://details?id=com.sello.app');
+      // Android: market:// vale a pena porque leva direto ao app da Play Store.
+      if (isAndroid && embutido && android) {
+        var webA = android.getAttribute('href');
+        android.addEventListener('click', function () {
+          setTimeout(function () {
+            if (!document.hidden && dica) dica.removeAttribute('hidden');
+          }, 2500);
+        });
+        void webA;
+      }
     })();
   </script>
 </body>
