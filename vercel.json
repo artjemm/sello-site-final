@@ -3,6 +3,10 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/download",
+      "destination": "/api/app"
+    },
+    {
       "source": "/app",
       "destination": "/api/app"
     },

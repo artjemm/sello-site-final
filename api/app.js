@@ -1,5 +1,10 @@
 /**
- * /app — manda direto para a loja do aparelho, sem tela intermediária.
+ * /download (e /app) — manda direto para a loja do aparelho, sem tela
+ * intermediária.
+ *
+ * /download é o endereço para divulgar: é o que a pessoa entende ao ler numa
+ * bio do Instagram ou ouvir alguém falar. /app continua atendendo porque já foi
+ * compartilhado por aí e link que morre é pior que link feio.
  *
  * POR QUE ISTO EXISTE
  * O botão da App Store não abria quando o link chegava por Instagram ou TikTok.
