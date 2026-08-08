@@ -73,20 +73,59 @@
   </div>
 
   <script>
-    // A tela é sempre mostrada (sem redirect automático). Só detectamos o device
-    // para deixar a loja certa em cima: iPhone/iPad → App Store, Android → Google
-    // Play. Desktop mantém a ordem do design (App Store, Google Play).
     (function () {
       var ua = navigator.userAgent || navigator.vendor || '';
       var isIOS = /iPad|iPhone|iPod/.test(ua) ||
         (/Macintosh/.test(ua) && 'ontouchend' in document);
       var isAndroid = /android/i.test(ua);
       var stores = document.querySelector('.stores');
-      if (isAndroid && stores) {
-        stores.insertBefore(document.getElementById('android'), stores.firstChild);
-      } else if (isIOS && stores) {
-        stores.insertBefore(document.getElementById('ios'), stores.firstChild);
+      var ios = document.getElementById('ios');
+      var android = document.getElementById('android');
+
+      // A tela é sempre mostrada (sem redirect automático). Só reordenamos para
+      // deixar a loja certa em cima: iPhone/iPad → App Store, Android → Google
+      // Play. Desktop mantém a ordem do design.
+      if (isAndroid && stores) stores.insertBefore(android, stores.firstChild);
+      else if (isIOS && stores) stores.insertBefore(ios, stores.firstChild);
+
+      /* ── Navegador interno do Instagram/TikTok ────────────────────────────
+       *
+       * O botão da Apple "não fazia nada" quando o link era aberto de dentro do
+       * Instagram ou do TikTok — e só ali. Esses navegadores embutidos recusam
+       * abrir a App Store por link https: a navegação é engolida em silêncio,
+       * sem erro e sem nada acontecer. No Safari o mesmo link funciona, que é
+       * por que o problema parecia fantasma.
+       *
+       * A saída é o esquema nativo (itms-apps:// e market://), que esses
+       * navegadores encaminham ao sistema em vez de tentar carregar sozinhos.
+       *
+       * O href continua sendo o https — ele precisa existir para desktop, para
+       * quem compartilha o link adiante e para os robôs de prévia. O esquema
+       * nativo só entra no toque, e se o sistema não atender em 1,2s a gente
+       * deixa o https seguir. Sem esse prazo, um aparelho sem App Store ficaria
+       * numa tela em branco.
+       */
+      function abrirLoja(link, nativo) {
+        if (!link) return;
+        link.addEventListener('click', function (e) {
+          if (!isIOS && !isAndroid) return;   // desktop segue pelo https
+          e.preventDefault();
+          var href = link.getAttribute('href');
+          var voltou = false;
+          var aoSair = function () { voltou = true; };
+          window.addEventListener('pagehide', aoSair);
+          document.addEventListener('visibilitychange', aoSair);
+          window.location.href = nativo;
+          setTimeout(function () {
+            if (!voltou) window.location.href = href;
+            window.removeEventListener('pagehide', aoSair);
+            document.removeEventListener('visibilitychange', aoSair);
+          }, 1200);
+        });
       }
+
+      abrirLoja(ios, 'itms-apps://apps.apple.com/br/app/sello/id6791353216');
+      abrirLoja(android, 'market://details?id=com.sello.app');
     })();
   </script>
 </body>
