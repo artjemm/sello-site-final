@@ -2,9 +2,25 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/r/:slug", "destination": "/api/share?type=r&slug=:slug" },
-    { "source": "/g/:slug", "destination": "/api/share?type=g&slug=:slug" },
-    { "source": "/l/:slug", "destination": "/api/share?type=l&slug=:slug" },
-    { "source": "/u/:slug", "destination": "/api/share?type=u&slug=:slug" }
+    {
+      "source": "/app",
+      "destination": "/api/app"
+    },
+    {
+      "source": "/r/:slug",
+      "destination": "/api/share?type=r&slug=:slug"
+    },
+    {
+      "source": "/g/:slug",
+      "destination": "/api/share?type=g&slug=:slug"
+    },
+    {
+      "source": "/l/:slug",
+      "destination": "/api/share?type=l&slug=:slug"
+    },
+    {
+      "source": "/u/:slug",
+      "destination": "/api/share?type=u&slug=:slug"
+    }
   ]
 }
