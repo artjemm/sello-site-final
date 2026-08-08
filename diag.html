@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Diagnóstico — Sello</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 24px; background: #fff; color: #0D111B; line-height: 1.5;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { font-size: 14px; color: #6D717F; margin-bottom: 24px; }
+    .box {
+      background: #F4F4F6; border-radius: 12px; padding: 14px;
+      font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+      word-break: break-all; margin-bottom: 20px; white-space: pre-wrap;
+    }
+    .lbl { font-weight: 700; font-size: 13px; margin: 18px 0 8px; }
+    a.t {
+      display: block; background: #E30F2F; color: #fff; text-decoration: none;
+      border-radius: 12px; padding: 15px; text-align: center; font-weight: 700;
+      font-size: 15px; margin-bottom: 10px;
+    }
+    a.t.alt { background: #0D111B; }
+    a.t.alt2 { background: #4D5461; }
+    .nota { font-size: 13px; color: #6D717F; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h1>Diagnóstico do botão da loja</h1>
+  <p class="sub">Abra esta página dentro do Instagram ou TikTok e toque nos três
+    botões, um de cada vez. Depois mande um print desta tela.</p>
+
+  <div class="lbl">1. Onde você está</div>
+  <div class="box" id="amb">…</div>
+
+  <div class="lbl">2. Teste os três, um por vez</div>
+  <a class="t" id="b1" href="https://apps.apple.com/br/app/sello/id6791353216">A — link normal da App Store</a>
+  <a class="t alt" id="b2" href="itms-apps://apps.apple.com/br/app/sello/id6791353216">B — esquema nativo (itms-apps)</a>
+  <a class="t alt2" id="b3" href="https://selloapp.com.br/download">C — o /download com desvio no servidor</a>
+
+  <div class="lbl">3. O que aconteceu</div>
+  <div class="box" id="log">nenhum toque ainda</div>
+
+  <p class="nota">Cada linha registra se a página chegou a sair do ar depois do
+    toque. "SAIU" = alguma coisa abriu. "FICOU" = o toque não levou a lugar
+    nenhum, que é o defeito que estamos caçando.</p>
+
+  <script>
+    var ua = navigator.userAgent || navigator.vendor || '';
+    var embutido = /Instagram|FBAN|FBAV|musical_ly|Bytedance|TikTok|LinkedInApp/i.test(ua);
+    var qual = /Instagram/i.test(ua) ? 'Instagram'
+      : /musical_ly|Bytedance|TikTok/i.test(ua) ? 'TikTok'
+      : /FBAN|FBAV/i.test(ua) ? 'Facebook'
+      : embutido ? 'outro app' : 'navegador normal';
+
+    document.getElementById('amb').textContent =
+      'app: ' + qual + '\nnavegador embutido: ' + (embutido ? 'SIM' : 'nao') +
+      '\n\n' + ua;
+
+    var log = document.getElementById('log');
+    var linhas = [];
+
+    function marcar(nome) {
+      return function () {
+        var saiu = false;
+        var t0 = Date.now();
+        function fora() { saiu = true; }
+        window.addEventListener('pagehide', fora);
+        document.addEventListener('visibilitychange', fora);
+        setTimeout(function () {
+          var estado = (saiu || document.hidden) ? 'SAIU' : 'FICOU';
+          linhas.push(nome + ': ' + estado + '  (' + (Date.now() - t0) + 'ms)');
+          log.textContent = linhas.join('\n');
+          window.removeEventListener('pagehide', fora);
+          document.removeEventListener('visibilitychange', fora);
+        }, 2500);
+      };
+    }
+
+    document.getElementById('b1').addEventListener('click', marcar('A link normal'));
+    document.getElementById('b2').addEventListener('click', marcar('B itms-apps'));
+    document.getElementById('b3').addEventListener('click', marcar('C /download'));
+  </script>
+</body>
+</html>
