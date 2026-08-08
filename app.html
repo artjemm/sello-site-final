@@ -82,50 +82,49 @@
       var ios = document.getElementById('ios');
       var android = document.getElementById('android');
 
-      // A tela é sempre mostrada (sem redirect automático). Só reordenamos para
-      // deixar a loja certa em cima: iPhone/iPad → App Store, Android → Google
-      // Play. Desktop mantém a ordem do design.
+      // Reordena para deixar a loja do aparelho em cima. Desktop mantém a
+      // ordem do design.
       if (isAndroid && stores) stores.insertBefore(android, stores.firstChild);
       else if (isIOS && stores) stores.insertBefore(ios, stores.firstChild);
 
-      /* ── Navegador interno do Instagram/TikTok ────────────────────────────
+      /* ── Navegador interno do Instagram e do TikTok ───────────────────────
        *
-       * O botão da Apple "não fazia nada" quando o link era aberto de dentro do
-       * Instagram ou do TikTok — e só ali. Esses navegadores embutidos recusam
-       * abrir a App Store por link https: a navegação é engolida em silêncio,
-       * sem erro e sem nada acontecer. No Safari o mesmo link funciona, que é
-       * por que o problema parecia fantasma.
+       * O botão da Apple não abria quando o link chegava por esses apps — e só
+       * ali; no Safari sempre funcionou. Eles abrem o link num navegador
+       * embutido que RECUSA carregar a App Store por https: a navegação é
+       * engolida sem erro e sem nada acontecer.
        *
-       * A saída é o esquema nativo (itms-apps:// e market://), que esses
-       * navegadores encaminham ao sistema em vez de tentar carregar sozinhos.
+       * A primeira tentativa (08/08) cancelava o toque e navegava por código
+       * para itms-apps://. Não funcionou, e o motivo importa: nesses
+       * navegadores, navegação POR CÓDIGO para esquema nativo é bloqueada. Só
+       * passa quando o próprio toque é a navegação.
        *
-       * O href continua sendo o https — ele precisa existir para desktop, para
-       * quem compartilha o link adiante e para os robôs de prévia. O esquema
-       * nativo só entra no toque, e se o sistema não atender em 1,2s a gente
-       * deixa o https seguir. Sem esse prazo, um aparelho sem App Store ficaria
-       * numa tela em branco.
+       * Por isso agora o esquema nativo entra no href, ainda no carregamento.
+       * O toque vira uma navegação comum e direta, que o sistema atende.
+       *
+       * O https fica guardado em data-web e volta como rede de segurança se, um
+       * segundo e meio depois, a página ainda estiver aqui — aparelho sem loja
+       * instalada, ou esquema recusado. Sem isso o botão poderia não fazer nada
+       * de novo, que é justamente o que estamos consertando.
        */
-      function abrirLoja(link, nativo) {
+      function nativo(link, url) {
         if (!link) return;
-        link.addEventListener('click', function (e) {
-          if (!isIOS && !isAndroid) return;   // desktop segue pelo https
-          e.preventDefault();
-          var href = link.getAttribute('href');
-          var voltou = false;
-          var aoSair = function () { voltou = true; };
-          window.addEventListener('pagehide', aoSair);
-          document.addEventListener('visibilitychange', aoSair);
-          window.location.href = nativo;
+        var web = link.getAttribute('href');
+        link.setAttribute('data-web', web);
+        link.setAttribute('href', url);
+        link.addEventListener('click', function () {
+          var saiu = false;
+          var marcar = function () { saiu = true; };
+          window.addEventListener('pagehide', marcar);
+          document.addEventListener('visibilitychange', marcar);
           setTimeout(function () {
-            if (!voltou) window.location.href = href;
-            window.removeEventListener('pagehide', aoSair);
-            document.removeEventListener('visibilitychange', aoSair);
-          }, 1200);
+            if (!saiu && !document.hidden) window.location.href = web;
+          }, 1500);
         });
       }
 
-      abrirLoja(ios, 'itms-apps://apps.apple.com/br/app/sello/id6791353216');
-      abrirLoja(android, 'market://details?id=com.sello.app');
+      if (isIOS) nativo(ios, 'itms-apps://apps.apple.com/br/app/sello/id6791353216');
+      if (isAndroid) nativo(android, 'market://details?id=com.sello.app');
     })();
   </script>
 </body>
