@@ -481,3 +481,54 @@
     });
   })();
 })();
+
+/* "Nos contate": o clique nunca fica mudo. Copia o e-mail + mostra um toast,
+   e NÃO previne o mailto — quem tem app de e-mail configurado, abre também.
+   Assim funciona em qualquer aparelho, com ou sem cliente de e-mail. */
+(function(){
+  var toastEl, toastTimer;
+  function toast(msg){
+    if(!toastEl){
+      toastEl = document.createElement('div');
+      toastEl.setAttribute('role','status');
+      toastEl.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);'
+        + 'background:#0D111B;color:#fff;font:600 14px/1.2 system-ui,-apple-system,Segoe UI,sans-serif;'
+        + 'padding:12px 18px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.28);'
+        + 'z-index:99999;opacity:0;transition:opacity .18s ease,transform .18s ease;pointer-events:none;'
+        + 'max-width:90vw;text-align:center';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    requestAnimationFrame(function(){
+      toastEl.style.opacity = '1';
+      toastEl.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){
+      toastEl.style.opacity = '0';
+      toastEl.style.transform = 'translateX(-50%) translateY(12px)';
+    }, 2600);
+  }
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text)['catch'](function(){ legacyCopy(text); });
+    } else { legacyCopy(text); }
+  }
+  function legacyCopy(text){
+    try{
+      var t = document.createElement('textarea');
+      t.value = text;
+      t.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(t); t.focus(); t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[data-mailcopy]');
+    if(!a) return;
+    var email = a.getAttribute('data-mailcopy');
+    copyText(email);
+    toast('E-mail copiado: ' + email);
+  });
+})();
