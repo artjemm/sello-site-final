@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "SXR8XQ5B2K.br.com.selloapp",
+        "paths": ["/r/*", "/g/*", "/l/*", "/u/*"]
+      }
+    ]
+  }
+}
