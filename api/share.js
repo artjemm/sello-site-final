@@ -117,10 +117,10 @@ async function resolve(type, rawSlug) {
   if (type === 'l') {
     const l =
       (await sb(
-        `lists?share_slug=eq.${encodeURIComponent(slug)}&is_public=eq.true&select=title,slug,cover,user_id&limit=1`,
+        `lists?share_slug=eq.${encodeURIComponent(slug)}&is_public=eq.true&select=id,title,slug,cover,user_id&limit=1`,
       )) ||
       (await sb(
-        `lists?slug=eq.${encodeURIComponent(slug)}&is_public=eq.true&select=title,slug,cover,user_id&limit=1`,
+        `lists?slug=eq.${encodeURIComponent(slug)}&is_public=eq.true&select=id,title,slug,cover,user_id&limit=1`,
       ));
     if (!l) return null;
     // O @ do dono entra no texto, então vale uma segunda consulta — sem ele a
@@ -137,7 +137,7 @@ async function resolve(type, rawSlug) {
       image: l.cover,
       heading: l.title,
       kicker: `Lista de ${at}`,
-      deepLink: `sello://userlist/${l.slug}`,
+      deepLink: `sello://userlist/${l.id}`,
     };
   }
 
