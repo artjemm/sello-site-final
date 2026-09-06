@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sello.app",
+      "sha256_cert_fingerprints": [
+        "FC:68:55:08:D8:59:7B:DE:AD:05:E6:64:53:D7:A7:5F:9D:DF:A0:FE:7D:CA:8F:2E:E5:01:10:B0:B5:0E:4A:E7"
+      ]
+    }
+  }
+]
