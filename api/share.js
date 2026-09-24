@@ -79,23 +79,16 @@ async function resolve(type, rawSlug) {
     // O endereço novo é o nome (z-deli-restaurante-delicatessen); o antigo é o
     // identificador interno (r632). Aceitar os dois mantém válido tudo que já
     // foi compartilhado e tudo que ainda venha de um app desatualizado.
+    const COLS = 'name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,rating_score,review_count,lat,lng,catalog_json';
     const r =
       (await sb(
-        `restaurants?share_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=name,slug,hero_image&limit=1`,
+        `restaurants?share_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
       )) ||
       (await sb(
-        `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=name,slug,hero_image&limit=1`,
+        `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
       ));
     if (!r) return null;
-    return {
-      title: noSello(`Confira o ${r.name}`),
-      description:
-        'Descubra fotos, informações e tudo o que você precisa saber antes da sua próxima visita.',
-      image: r.hero_image,
-      heading: r.name,
-      kicker: 'Restaurante',
-      deepLink: `sello://restaurant/${r.slug}`,
-    };
+    return fichaRestaurante(r);
   }
 
   if (type === 'g') {
@@ -159,6 +152,138 @@ async function resolve(type, rawSlug) {
   return null;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Ficha de restaurante
+ *
+ * Estas páginas nasceram só para a prévia do WhatsApp, e por isso diziam a
+ * MESMA frase para os ~500 restaurantes ("Descubra fotos, informações..."):
+ * centenas de URLs idênticas, que para busca é conteúdo raso e conta contra o
+ * site inteiro em vez de a favor.
+ *
+ * O editorial já existia no catalog_json — hook, o take do Sello, por que ir,
+ * o que esperar, pratos, horários. Só não estava sendo lido. Aqui ele vira o
+ * corpo da página, o que serve de uma vez a três públicos: o robô da prévia, o
+ * buscador, e quem chega da busca e quer decidir onde jantar.
+ *
+ * NADA aqui fixa cidade. Bairro e endereço vêm do dado, então o dia em que o
+ * catálogo tiver Rio ou Curitiba as páginas se descrevem sozinhas.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** "$$" a "$$$$" — o número sozinho não diz nada para quem lê. */
+function cifroes(n) {
+  const v = Number(n);
+  return v >= 1 && v <= 4 ? '$'.repeat(v) : '';
+}
+
+function secao(titulo, corpo) {
+  return corpo ? '<section><h2>' + esc(titulo) + '</h2>' + corpo + '</section>' : '';
+}
+
+function lista(itens) {
+  const li = (itens || []).filter(Boolean).map((t) => '<li>' + esc(t) + '</li>').join('');
+  return li ? '<ul>' + li + '</ul>' : '';
+}
+
+function paragrafo(t) {
+  return t ? '<p>' + esc(t) + '</p>' : '';
+}
+
+function fichaRestaurante(r) {
+  const c = r.catalog_json || {};
+  const cozinha = c.cuisine || c.sello_primary_category || '';
+  const bairro = c.neighborhood || '';
+  const preco = cifroes(c.price_range != null ? c.price_range : r.price_level);
+
+  /* O título é a linha azul do Google. "Confira o X" não é buscado por
+   * ninguém; "X — Japonesa em Bela Vista" carrega o nome, a cozinha e o
+   * bairro, que é exatamente como a pessoa procura. */
+  const partes = [cozinha, bairro ? 'em ' + bairro : ''].filter(Boolean).join(' ');
+  const title = partes ? r.name + ' — ' + partes + ' | Sello' : noSello(r.name);
+
+  /* A descrição precisa ser única por restaurante: é ela que aparece embaixo
+   * do título na busca, e era ela a frase repetida em todas as páginas. */
+  const description =
+    c.hook ||
+    c.description ||
+    c.sello_take_body ||
+    r.name + (bairro ? ' — ' + bairro : '') + '. Veja avaliação, pratos e horários no Sello.';
+
+  const horarios = (c.hours || [])
+    .filter((h) => h && h.label)
+    .map((h) => '<tr><th>' + esc(h.label) + '</th><td>' + esc(h.value) + '</td></tr>')
+    .join('');
+
+  const pratos = ((c.dishes && c.dishes.must_order) || [])
+    .filter((d) => d && d.name)
+    .map((d) => '<li><strong>' + esc(d.name) + '</strong>' + (d.note ? ' — ' + esc(d.note) : '') + '</li>')
+    .join('');
+
+  const contato = [
+    r.address ? '<tr><th>Endereço</th><td>' + esc(r.address) + '</td></tr>' : '',
+    preco ? '<tr><th>Faixa de preço</th><td>' + esc(preco) + '</td></tr>' : '',
+    r.phone ? '<tr><th>Telefone</th><td>' + esc(r.phone) + '</td></tr>' : '',
+    r.instagram
+      ? '<tr><th>Instagram</th><td><a rel="nofollow" href="https://instagram.com/' +
+        esc(r.instagram) + '">@' + esc(r.instagram) + '</a></td></tr>'
+      : '',
+  ].filter(Boolean).join('');
+
+  /* Cada seção só entra se o dado existir. Restaurante sem editorial cai numa
+   * página curta — menos do que gostaríamos, mas honesta. Preencher buraco com
+   * texto genérico era exatamente o problema que esta mudança resolve. */
+  const body = [
+    secao('O take do Sello', paragrafo(c.sello_take_body)),
+    secao('Por que ir', lista(c.why_go)),
+    secao('O que esperar', paragrafo(c.what_to_expect)),
+    pratos ? '<section><h2>O que pedir</h2><ul>' + pratos + '</ul></section>' : '',
+    secao('O que a comunidade diz', paragrafo(c.community_summary)),
+    horarios ? '<section><h2>Horários</h2><table>' + horarios + '</table></section>' : '',
+    contato ? '<section><h2>Onde fica</h2><table>' + contato + '</table></section>' : '',
+  ].filter(Boolean).join('');
+
+  /* Schema de restaurante. Não é truque de AEO — é o caso em que o dado
+   * estruturado existe de verdade e o Google tem resultado rico para ele.
+   * O endereço entra como texto puro: quebrar a string em rua/cidade/UF sem
+   * ter os campos separados no banco só produziria dado errado com cara de
+   * certo, e erra mais ainda quando chegar cidade nova. */
+  const jsonld = {
+    '@context': 'https://schema.org',
+    '@type': 'Restaurant',
+    name: r.name,
+    url: SITE + '/r/' + (r.share_slug || r.slug),
+  };
+  if (r.hero_image) jsonld.image = r.hero_image;
+  if (c.hook) jsonld.description = c.hook;
+  if (cozinha) jsonld.servesCuisine = cozinha;
+  if (preco) jsonld.priceRange = preco;
+  if (r.phone) jsonld.telephone = r.phone;
+  if (r.address) {
+    jsonld.address = { '@type': 'PostalAddress', streetAddress: r.address, addressCountry: 'BR' };
+  }
+  if (r.lat && r.lng) {
+    jsonld.geo = { '@type': 'GeoCoordinates', latitude: r.lat, longitude: r.lng };
+  }
+  if (r.rating_score && r.review_count) {
+    jsonld.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: r.rating_score,
+      reviewCount: r.review_count,
+      bestRating: 5,
+    };
+  }
+
+  return {
+    title: title,
+    description: description,
+    image: r.hero_image,
+    heading: r.name,
+    kicker: [cozinha, bairro].filter(Boolean).join(' · ') || 'Restaurante',
+    deepLink: 'sello://restaurant/' + r.slug,
+    body: body,
+    jsonld: jsonld,
+  };
+}
+
 function page(data, canonical) {
   const img = data.image || OG_FALLBACK;
   return `<!doctype html>
@@ -180,6 +305,7 @@ function page(data, canonical) {
 <meta name="twitter:title" content="${esc(data.title)}" />
 <meta name="twitter:description" content="${esc(data.description)}" />
 <meta name="twitter:image" content="${esc(img)}" />
+${data.jsonld ? '<script type="application/ld+json">' + JSON.stringify(data.jsonld) + '</script>' : ''}
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -189,7 +315,24 @@ function page(data, canonical) {
   * { box-sizing:border-box; }
   body { margin:0; font-family:'Open Sans',system-ui,sans-serif; color:var(--ink);
          background:#fff; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
+  /* Sem ficha continua o cartão de antes. Com ficha a página vira leitura,
+     então sobe para o topo e abre a medida — texto corrido em 420px de
+     largura com a tela inteira vazia embaixo parece erro. */
+  body.ficha { align-items:flex-start; padding-top:40px; padding-bottom:64px; }
   .card { width:100%; max-width:420px; }
+  body.ficha .card { max-width:680px; }
+  section { margin-top:32px; }
+  section h2 { font-family:'Anton SC',sans-serif; font-weight:400; text-transform:uppercase;
+               font-size:17px; letter-spacing:.02em; margin:0 0 10px; }
+  section p, section li { color:var(--muted); font-size:15px; line-height:1.6; }
+  section p { margin:0; }
+  section ul { margin:0; padding-left:20px; }
+  section li { margin-bottom:6px; }
+  section table { width:100%; border-collapse:collapse; font-size:15px; }
+  section th { text-align:left; font-weight:600; padding:8px 12px 8px 0; vertical-align:top;
+               white-space:nowrap; width:1%; }
+  section td { color:var(--muted); padding:8px 0; }
+  section tr + tr th, section tr + tr td { border-top:1px solid #F1F1F3; }
   .cover { width:100%; aspect-ratio:16/10; object-fit:cover; border-radius:16px; background:#EEE; display:block; }
   .kicker { font-size:13px; color:var(--red); font-weight:700; text-transform:uppercase;
             letter-spacing:.06em; margin:20px 0 6px; }
@@ -205,7 +348,7 @@ function page(data, canonical) {
   .foot a { color:var(--muted); }
 </style>
 </head>
-<body>
+<body class="${data.body ? 'ficha' : ''}">
   <main class="card">
     <img class="cover" src="${esc(img)}" alt="" onerror="this.src='${esc(OG_FALLBACK)}'" />
     <div class="kicker">${esc(data.kicker)}</div>
@@ -216,6 +359,7 @@ function page(data, canonical) {
       <a class="cta" href="${APP_STORE}">App Store</a>
       <a class="cta" href="${PLAY_STORE}">Google Play</a>
     </div>
+    ${data.body || ''}
     <div class="foot"><a href="${SITE}">selloapp.com.br</a></div>
   </main>
 <script>
@@ -224,7 +368,16 @@ function page(data, canonical) {
   // botão acima cobre esses. Aqui é só a tentativa silenciosa, sem redirecionar
   // para a loja depois — mandar quem não tem o app para a loja no susto some
   // com a página que ele veio ver.
-  setTimeout(function () { location.href = ${JSON.stringify(data.deepLink)}; }, 400);
+  // Quem chega de um link compartilhado quer o app: continua indo direto.
+  // Quem chega de uma BUSCA veio ler a página — mandar essa pessoa para o app
+  // apaga o conteúdo que ela pediu e a devolve para o Google. O botão acima
+  // segue ali para os dois casos, então ninguém perde o caminho.
+  var deBusca = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|brave)\./i.test(
+    (document.referrer || '').replace(/^https?:\/\//, '').split('/')[0]
+  );
+  if (!deBusca) {
+    setTimeout(function () { location.href = ${JSON.stringify(data.deepLink)}; }, 400);
+  }
 </script>
 </body>
 </html>`;
