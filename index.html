@@ -486,5 +486,39 @@
 
 <script src="js/lenis.min.js?v=1" defer></script>
 <script src="js/sello.js?v=56" defer></script>
+<!-- ── Medição ──────────────────────────────────────────────────────────────
+     Vercel Web Analytics. Pageview vem de graça; o clique de download precisa
+     ser marcado à mão, porque ele SAI do site direto para a loja da Apple ou
+     do Google — não existe página nossa depois dele para carregar script e ser
+     contada. Sem isto, a única conversão que o site tem não aparece em lugar
+     nenhum, e não dá para saber se o tráfego de busca vira instalação. -->
+<script defer src="/_vercel/insights/script.js"></script>
+<script>
+(function () {
+  // `va` é fila: o script acima carrega com `defer`, então tudo que for
+  // marcado antes dele chegar espera em window.vaq e é drenado depois. Marcar
+  // cedo não perde evento.
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  function marcar(nome, dados) {
+    try { window.va('event', { name: nome, data: dados || {} }); } catch (e) {}
+  }
+  // Delegação na captura: pega o clique mesmo que o botão só exista depois
+  // (modal de download) e mesmo que algum handler pare a propagação.
+  document.addEventListener('click', function (ev) {
+    var el = ev.target;
+    var a = el && el.closest ? el.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    var pagina = location.pathname;
+    if (href.indexOf('apps.apple.com') > -1) { marcar('baixar_loja', { loja: 'ios', pagina: pagina }); return; }
+    if (href.indexOf('play.google.com') > -1) { marcar('baixar_loja', { loja: 'android', pagina: pagina }); return; }
+    // Intenção: quem pediu para baixar mas ainda não escolheu a loja. A
+    // diferença entre os dois números é onde as pessoas desistem.
+    if (href === '#baixar' || /\/(download|baixar|app)$/.test(href)) marcar('baixar_intencao', { pagina: pagina });
+    // Nas fichas, abrir no app é o equivalente da conversão.
+    if (href.indexOf('sello://') === 0) marcar('abrir_no_app', { pagina: pagina });
+  }, true);
+})();
+</script>
 </body>
 </html>
