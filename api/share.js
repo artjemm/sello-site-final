@@ -16,6 +16,7 @@
  */
 
 import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
+import { cartao, CSS_CARTAO } from './cartao.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -109,7 +110,7 @@ async function resolve(type, rawSlug) {
     );
     if (!g) return null;
     const itens = await sbAll(
-      `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,catalog_json)&order=position.asc&limit=200`,
+      `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,hero_image,address,price_level,catalog_json)&order=position.asc&limit=200`,
     );
     return fichaGuia(g, itens);
   }
@@ -304,20 +305,13 @@ function fichaRestaurante(r) {
  * ────────────────────────────────────────────────────────────────────────── */
 
 function fichaGuia(g, itens) {
-  const linhas = (itens || [])
+  /* Mesmo cartao das paginas de descoberta: foto, nota, faixa de preco,
+   * endereco e horario de hoje. Uma lista de nomes nao ajuda ninguem a decidir
+   * onde jantar, e o dado para decidir ja estava no catalogo. */
+  const restaurantes = (itens || [])
     .map((it) => it && it.restaurants)
-    .filter((r) => r && r.name)
-    .map((r) => {
-      const c = r.catalog_json || {};
-      const href = '/r/' + (r.share_slug || r.slug);
-      const onde = [c.cuisine, c.neighborhood].filter(Boolean).join(' · ');
-      return (
-        '<li><a href="' + esc(href) + '">' + esc(r.name) + '</a>' +
-        (onde ? ' <span class="meta">' + esc(onde) + '</span>' : '') +
-        (c.hook ? '<br />' + esc(c.hook) : '') +
-        '</li>'
-      );
-    });
+    .filter((r) => r && r.name);
+  const linhas = restaurantes.map(cartao);
 
   /* O <title> usa o titulo de BUSCA quando existe; o nome editorial segue
    * como heading (o H1 que a pessoa le). Sao campos diferentes de proposito:
@@ -337,9 +331,7 @@ function fichaGuia(g, itens) {
    * que esta mudança existe para acabar. A lista é o conteúdo do guia. */
   const body = [
     linhas.length
-      ? '<section><h2>Os restaurantes deste guia</h2><ol class="guia">' +
-        linhas.join('') +
-        '</ol></section>'
+      ? '<section><h2>Os restaurantes deste guia</h2>' + linhas.join('') + '</section>'
       : '',
   ].filter(Boolean).join('');
 
@@ -352,10 +344,7 @@ function fichaGuia(g, itens) {
         name: g.title,
         description: description,
         numberOfItems: linhas.length,
-        itemListElement: (itens || [])
-          .map((it) => it && it.restaurants)
-          .filter((r) => r && r.name)
-          .map((r, i) => ({
+        itemListElement: restaurantes.map((r, i) => ({
             '@type': 'ListItem',
             position: i + 1,
             name: r.name,
@@ -443,6 +432,7 @@ ${data.jsonld ? '<script type="application/ld+json">' + JSON.stringify(data.json
   .stores a { flex:1; border:1.5px solid #E4E4E7; color:var(--ink); }
   .foot { margin-top:28px; text-align:center; font-size:13px; }
   .foot a { color:var(--muted); }
+${CSS_CARTAO}
 </style>
 </head>
 <body class="${data.body ? 'ficha' : ''}">

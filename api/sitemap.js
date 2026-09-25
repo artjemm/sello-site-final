@@ -10,6 +10,8 @@
  * arquivo estático nasceria desatualizado e ninguém lembraria de regerar.
  */
 
+import { COZINHAS, aSlug, MINIMO } from './taxonomia.js';
+
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
 const SITE = 'https://selloapp.com.br';
@@ -73,6 +75,34 @@ export default async function handler(req, res) {
           prio: '0.7',
         }),
       );
+    }
+
+    /* Paginas de descoberta. So entram as que passam do piso — o mesmo que a
+     * rota usa para devolver 404. Listar no sitemap uma URL que responde 404
+     * e pedir ao Google para bater numa porta fechada, e ele desconta isso na
+     * confianca do arquivo inteiro. */
+    const taxo = await sb(
+      'restaurants?is_active=eq.true&select=catalog_json->>neighborhood,catalog_json->>cuisine&limit=2000',
+    );
+    const porBairro = {}, porCozinha = {}, porCombo = {};
+    for (const r of taxo) {
+      const b = r.neighborhood, c = r.cuisine;
+      if (b) porBairro[b] = (porBairro[b] || 0) + 1;
+      if (c) porCozinha[c] = (porCozinha[c] || 0) + 1;
+      if (b && c) porCombo[c + '|' + b] = (porCombo[c + '|' + b] || 0) + 1;
+    }
+    for (const [b, n] of Object.entries(porBairro)) {
+      if (n >= MINIMO.bairro) urls.push(url({ loc: '/onde-comer/' + aSlug(b), freq: 'weekly', prio: '0.8' }));
+    }
+    for (const [c, n] of Object.entries(porCozinha)) {
+      const t = COZINHAS[c];
+      // Cozinha com guia redireciona 308 para ele — nao e URL propria.
+      if (t && !t.guia && n >= MINIMO.cozinha) urls.push(url({ loc: '/restaurantes/' + t.slug, freq: 'weekly', prio: '0.8' }));
+    }
+    for (const [k, n] of Object.entries(porCombo)) {
+      const [c, b] = k.split('|');
+      const t = COZINHAS[c];
+      if (t && n >= MINIMO.combinacao) urls.push(url({ loc: '/restaurantes/' + t.slug + '/' + aSlug(b), freq: 'weekly', prio: '0.8' }));
     }
 
     const guias = await sb(

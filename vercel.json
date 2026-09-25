@@ -13,6 +13,18 @@
   ],
   "rewrites": [
     {
+      "source": "/restaurantes/:cozinha/:bairro",
+      "destination": "/api/lugares?tipo=combo&a=:cozinha&b=:bairro"
+    },
+    {
+      "source": "/restaurantes/:cozinha",
+      "destination": "/api/lugares?tipo=cozinha&a=:cozinha"
+    },
+    {
+      "source": "/onde-comer/:bairro",
+      "destination": "/api/lugares?tipo=bairro&a=:bairro"
+    },
+    {
       "source": "/guias",
       "destination": "/api/guias"
     },
