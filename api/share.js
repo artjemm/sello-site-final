@@ -61,6 +61,16 @@ function realId(slug) {
   return i === -1 ? slug : slug.slice(i + 2);
 }
 
+/** Igual a sb(), mas devolve a lista inteira — os itens de um guia. */
+async function sbAll(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) return [];
+  const rows = await res.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
 async function sb(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
@@ -93,18 +103,13 @@ async function resolve(type, rawSlug) {
 
   if (type === 'g') {
     const g = await sb(
-      `lists?slug=eq.${encodeURIComponent(slug)}&is_curated=eq.true&is_public=eq.true&select=title,slug,cover,subtitle&limit=1`,
+      `lists?slug=eq.${encodeURIComponent(slug)}&is_curated=eq.true&is_public=eq.true&select=id,title,slug,cover,subtitle,intro&limit=1`,
     );
     if (!g) return null;
-    return {
-      title: noSello(`Confira o guia ${g.title}`),
-      description:
-        'Uma curadoria editorial do Sello para descobrir restaurantes que realmente valem a visita.',
-      image: g.cover,
-      heading: g.title,
-      kicker: g.subtitle || 'Guia do Sello',
-      deepLink: `sello://list/${g.slug}`,
-    };
+    const itens = await sbAll(
+      `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,catalog_json)&order=position.asc&limit=200`,
+    );
+    return fichaGuia(g, itens);
   }
 
   if (type === 'l') {
@@ -284,6 +289,87 @@ function fichaRestaurante(r) {
   };
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Ficha de guia
+ *
+ * Mesmo problema que as fichas de restaurante tinham: os 50 guias repetiam
+ * "Uma curadoria editorial do Sello..." palavra por palavra.
+ *
+ * Aqui a lista de restaurantes é o conteúdo. Cada item aponta para a ficha
+ * dele, o que resolve de quebra um buraco que nenhum texto resolveria: até
+ * agora NADA no site linkava para as ~515 fichas. Elas existiam soltas, sem
+ * porta de entrada a não ser alguém compartilhar o link por fora.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+function fichaGuia(g, itens) {
+  const linhas = (itens || [])
+    .map((it) => it && it.restaurants)
+    .filter((r) => r && r.name)
+    .map((r) => {
+      const c = r.catalog_json || {};
+      const href = '/r/' + (r.share_slug || r.slug);
+      const onde = [c.cuisine, c.neighborhood].filter(Boolean).join(' · ');
+      return (
+        '<li><a href="' + esc(href) + '">' + esc(r.name) + '</a>' +
+        (onde ? ' <span class="meta">' + esc(onde) + '</span>' : '') +
+        (c.hook ? '<br />' + esc(c.hook) : '') +
+        '</li>'
+      );
+    });
+
+  const title = g.title + ' | Guia do Sello';
+
+  /* `intro` é escrito pela curadoria e é diferente em cada guia — era isso que
+   * devia estar na descrição desde o começo, em vez da frase única. */
+  const description =
+    g.intro ||
+    g.subtitle ||
+    'Uma seleção do Sello com ' + linhas.length + ' restaurantes escolhidos pela curadoria.';
+
+  /* O intro NÃO entra no corpo: ele já é o parágrafo de abertura da página,
+   * e repetir o mesmo texto duas vezes na mesma tela é o tipo de duplicação
+   * que esta mudança existe para acabar. A lista é o conteúdo do guia. */
+  const body = [
+    linhas.length
+      ? '<section><h2>Os restaurantes deste guia</h2><ol class="guia">' +
+        linhas.join('') +
+        '</ol></section>'
+      : '',
+  ].filter(Boolean).join('');
+
+  /* ItemList é o schema que descreve exatamente o que um guia é: uma lista
+   * ordenada de lugares. Sem inventar tipo que não se aplica. */
+  const jsonld = linhas.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: g.title,
+        description: description,
+        numberOfItems: linhas.length,
+        itemListElement: (itens || [])
+          .map((it) => it && it.restaurants)
+          .filter((r) => r && r.name)
+          .map((r, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            name: r.name,
+            url: SITE + '/r/' + (r.share_slug || r.slug),
+          })),
+      }
+    : null;
+
+  return {
+    title: title,
+    description: description,
+    image: g.cover,
+    heading: g.title,
+    kicker: g.subtitle || 'Guia do Sello',
+    deepLink: 'sello://list/' + g.slug,
+    body: body,
+    jsonld: jsonld,
+  };
+}
+
 function page(data, canonical) {
   const img = data.image || OG_FALLBACK;
   return `<!doctype html>
@@ -328,6 +414,11 @@ ${data.jsonld ? '<script type="application/ld+json">' + JSON.stringify(data.json
   section p { margin:0; }
   section ul { margin:0; padding-left:20px; }
   section li { margin-bottom:6px; }
+  ol.guia { margin:0; padding-left:22px; }
+  ol.guia li { margin-bottom:14px; color:var(--muted); font-size:15px; line-height:1.55; }
+  ol.guia a { color:var(--ink); font-weight:700; text-decoration:none; }
+  ol.guia a:hover { text-decoration:underline; }
+  .meta { color:var(--muted); font-weight:400; font-size:13px; }
   section table { width:100%; border-collapse:collapse; font-size:15px; }
   section th { text-align:left; font-weight:600; padding:8px 12px 8px 0; vertical-align:top;
                white-space:nowrap; width:1%; }
