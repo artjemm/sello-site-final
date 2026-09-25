@@ -15,6 +15,8 @@
  * e manter isso em quatro arquivos só multiplicaria os lugares onde corrigir.
  */
 
+import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
+
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
 // — as mesmas linhas que o app já mostra sem login.
@@ -317,7 +319,11 @@ function fichaGuia(g, itens) {
       );
     });
 
-  const title = g.title + ' | Guia do Sello';
+  /* O <title> usa o titulo de BUSCA quando existe; o nome editorial segue
+   * como heading (o H1 que a pessoa le). Sao campos diferentes de proposito:
+   * "Nao e miojo" e bom nome e pessima busca, e nao ha motivo para escolher
+   * entre os dois. Guia sem entrada no mapa cai no nome editorial. */
+  const title = (TITULOS_DE_BUSCA[g.slug] || g.title) + ' | Guia do Sello';
 
   /* `intro` é escrito pela curadoria e é diferente em cada guia — era isso que
    * devia estar na descrição desde o começo, em vez da frase única. */
