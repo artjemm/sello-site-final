@@ -18,6 +18,7 @@ const SITE = 'https://selloapp.com.br';
  *  o Google esperam de política de privacidade e termos. */
 const ESTATICAS = [
   { loc: '/', prio: '1.0', freq: 'weekly' },
+  { loc: '/guias', prio: '0.9', freq: 'weekly' },
   { loc: '/baixar', prio: '0.8', freq: 'monthly' },
   { loc: '/termos', prio: '0.3', freq: 'yearly' },
   { loc: '/privacidade', prio: '0.3', freq: 'yearly' },
