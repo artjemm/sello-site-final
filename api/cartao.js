@@ -34,6 +34,25 @@ function horarioDeHoje(hours) {
   return /fechado/i.test(achado.value) ? 'Fechado hoje' : `Hoje ${achado.value}`;
 }
 
+/**
+ * Miniatura em vez da foto inteira.
+ *
+ * As fotos do catálogo têm ~325 KB cada — tamanho de tela de restaurante, não
+ * de selo de 96px. A página de Pinheiros tem 91 cartões: servir o original
+ * seria mandar 29 MB para alguém decidir onde jantar, e velocidade é coisa que
+ * o Google mede e desconta.
+ *
+ * O Storage do Supabase redimensiona sob demanda trocando /object/ por
+ * /render/image/. A mesma foto sai com 7 KB — 44 vezes menor. URL que não seja
+ * do nosso Storage passa intacta, porque o parâmetro não significaria nada lá.
+ */
+function miniatura(u, px) {
+  const s = String(u ?? '');
+  if (!s.includes('/storage/v1/object/public/')) return s;
+  return s.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') +
+    (s.includes('?') ? '&' : '?') + 'width=' + px + '&height=' + px + '&resize=cover&quality=70';
+}
+
 /** Só a rua e o número: o endereço completo do catálogo traz bairro, cidade,
  *  UF e CEP, e repetir isso em 90 cartões da mesma página é ruído. */
 function ruaCurta(endereco) {
@@ -52,7 +71,7 @@ export function cartao(r) {
   /* loading="lazy" importa aqui: uma página de bairro grande tem 90 cartões, e
    * carregar 90 fotos de uma vez torraria o carregamento — que o Google mede. */
   const foto = r.hero_image
-    ? `<img class="ct__img" src="${esc(r.hero_image)}" alt="${esc(r.name)}" loading="lazy" decoding="async" />`
+    ? `<img class="ct__img" src="${esc(miniatura(r.hero_image, 192))}" alt="${esc(r.name)}" width="96" height="96" loading="lazy" decoding="async" />`
     : '<div class="ct__img ct__img--vazio"></div>';
 
   return (
