@@ -30,14 +30,21 @@
   <meta name="twitter:image" content="https://selloapp.com.br/assets/img/hero.jpg" />
 
   <meta name="theme-color" content="#0D111B" />
+  <!-- Smart App Banner (Safari/iOS): oferece abrir/baixar o app nativo -->
+  <meta name="apple-itunes-app" content="app-id=6791353216" />
 
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Organization","name":"Sello","url":"https://selloapp.com.br/","logo":"https://selloapp.com.br/apple-touch-icon.png","description":"App de descoberta de restaurantes em São Paulo: explore, avalie e compartilhe lugares através de amigos e pessoas com gostos parecidos.","areaServed":{"@type":"City","name":"São Paulo"}}
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"Organization","@id":"https://selloapp.com.br/#organization","name":"Sello","url":"https://selloapp.com.br/","logo":"https://selloapp.com.br/apple-touch-icon.png","description":"Sello é a curadoria editorial de restaurantes de São Paulo: cada lugar recebe uma nota de 0 a 10, a indicação do que pedir e entra em guias por ocasião e por bairro.","areaServed":{"@type":"City","name":"São Paulo"},"sameAs":["https://apps.apple.com/br/app/sello/id6791353216","https://play.google.com/store/apps/details?id=com.sello.app","https://instagram.com/sello_oficial"]},
+    {"@type":"WebSite","@id":"https://selloapp.com.br/#website","name":"Sello","url":"https://selloapp.com.br/","inLanguage":"pt-BR","publisher":{"@id":"https://selloapp.com.br/#organization"}},
+    {"@type":"MobileApplication","@id":"https://selloapp.com.br/#app","name":"Sello","url":"https://selloapp.com.br/","description":"Curadoria editorial de restaurantes em São Paulo, com notas de 0 a 10, o que pedir e guias por ocasião e bairro.","operatingSystem":"iOS, Android","applicationCategory":"LifestyleApplication","inLanguage":"pt-BR","offers":{"@type":"Offer","price":"0","priceCurrency":"BRL"},"publisher":{"@id":"https://selloapp.com.br/#organization"}}
+  ]}
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Anton+SC&family=Inter:wght@400;500;600&family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/sello.css?v=135" />
+  <!-- Fontes da marca: só Anton SC (display) e Open Sans (texto) -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton+SC&family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/sello.css?v=136" />
 </head>
 <body>
 
@@ -61,15 +68,18 @@
 
 <!-- ===================== HERO ===================== -->
 <section class="hero">
-  <div class="hero__media"><img src="assets/img/hero.jpg" alt="" /></div>
+  <div class="hero__media"><img src="assets/img/hero-1920.webp" srcset="assets/img/hero-1280.webp 1280w, assets/img/hero-1920.webp 1920w" sizes="100vw" width="1920" height="1080" alt="" fetchpriority="high" /></div>
   <div class="hero__scrim"></div>
+  <!-- Hero visível já no primeiro paint (é o LCP): sem data-split/data-reveal,
+       que deixavam o texto em opacity:0 até o JS rodar. A entrada é só um
+       deslize em CSS (transform), que não esconde nada. -->
   <div class="hero__content wrap">
-    <h1 class="hero__title" data-split>Escolher um restaurante não deveria <span class="accent">depender da sorte.</span></h1>
-    <p class="hero__sub" data-reveal data-delay="1">O Sello reúne curadoria editorial, inteligência artificial e experiências reais para ajudar você a descobrir lugares em que vale a pena estar.</p>
-    <div class="hero__cta" data-reveal data-delay="2">
+    <h1 class="hero__title hero-in">Escolher um restaurante não deveria <span class="accent">depender da sorte.</span></h1>
+    <p class="hero__sub hero-in hero-in--1">O Sello reúne curadoria editorial, inteligência artificial e experiências reais para ajudar você a descobrir lugares em que vale a pena estar.</p>
+    <div class="hero__cta hero-in hero-in--2">
       <a href="#baixar" class="btn btn--accent btn--app"><span class="btn__t">BAIXAR O APP</span></a>
       <div class="hero__join-wrap">
-        <span class="avatars" aria-hidden="true"><img src="assets/avatars/av1.png" alt="" decoding="async" /><img src="assets/avatars/av2.png" alt="" decoding="async" /><img src="assets/avatars/av3.png" alt="" decoding="async" /><img src="assets/avatars/av4.png" alt="" decoding="async" /><img src="assets/avatars/av5.png" alt="" decoding="async" /></span>
+        <span class="avatars" aria-hidden="true"><img src="assets/avatars/av1.webp" alt="" width="96" height="96" decoding="async" /><img src="assets/avatars/av2.webp" alt="" width="96" height="96" decoding="async" /><img src="assets/avatars/av3.webp" alt="" width="96" height="96" decoding="async" /><img src="assets/avatars/av4.webp" alt="" width="96" height="96" decoding="async" /><img src="assets/avatars/av5.webp" alt="" width="96" height="96" decoding="async" /></span>
         <p class="hero__join">Junte-se à comunidade que transforma boas recomendações em <strong>grandes descobertas.</strong></p>
       </div>
     </div>
@@ -82,7 +92,7 @@
 
 <!-- ===================== WHITE SHEET ===================== -->
 <div class="sheet">
-  <img src="assets/img/seal.svg" alt="" class="sheet__seal" aria-hidden="true" />
+  <img src="assets/img/seal.svg" alt="" class="sheet__seal" aria-hidden="true" width="80" height="80" decoding="async" />
 
 <!-- ===================== DESCOBRIR (problem framing — Figma 2028:1752) ===================== -->
 <section class="discover wrap" id="discover">
@@ -191,8 +201,8 @@
             <p class="dcard__sub">Encontre restaurantes através do mapa, guias exclusivos e recomendações de pessoas que compartilham o seu gosto.</p>
           </div>
           <div class="lphone lphone--scroll" data-pan style="top:37.11%">
-            <div class="lphone__scr"><img class="lphone__img" src="assets/screens/home-tall.jpg" alt="" decoding="async" /></div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <div class="lphone__scr"><img class="lphone__img" src="assets/screens/home-tall.webp" alt="" width="500" height="2633" loading="lazy" decoding="async" /></div>
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
         </div>
         <div class="dcard dcard--red r-soft" data-reveal data-delay="1">
@@ -202,8 +212,8 @@
             <p class="dcard__sub">Compartilhe avaliações, listas e recomendações com amigos e com a comunidade do Sello.</p>
           </div>
           <div class="lphone lphone--scroll" data-pan style="top:37.11%">
-            <div class="lphone__scr"><img class="lphone__img" src="assets/screens/lanches-list.jpg?v=1" alt="" decoding="async" /></div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <div class="lphone__scr"><img class="lphone__img" src="assets/screens/lanches-list.webp" alt="" width="500" height="1219" loading="lazy" decoding="async" /></div>
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
         </div>
       </div>
@@ -216,7 +226,7 @@
           </div>
           <div class="lphone lphone--avalie" data-review style="top:-12%">
             <div class="lphone__scr">
-              <img class="lphone__img" src="assets/screens/detail-tall.jpg" alt="" decoding="async" />
+              <img class="lphone__img" src="assets/screens/detail-tall.webp" alt="" width="480" height="1800" loading="lazy" decoding="async" />
               <div class="lphone__dim"></div>
               <div class="lphone__sheet">
                 <div class="vnota">
@@ -232,7 +242,7 @@
                   <span class="vnota__grab"></span>
                   <div class="vnota__top"><span class="vnota__name"></span><span class="vnota__x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
                   <div class="vsent__body">
-                    <span class="vsent__seal"><img src="assets/img/seal.svg" alt="" decoding="async" /><svg class="vsent__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+                    <span class="vsent__seal"><img src="assets/img/seal.svg" alt="" width="213" height="208" loading="lazy" decoding="async" /><svg class="vsent__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
                     <span class="vsent__h anton">Veredito enviado!</span>
                     <span class="vsent__sub">Sua experiência na <b>Casa do Porco</b> recebeu a nota <b>9,0</b></span>
                     <span class="vsent__pts"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>Você ganhou <b>+62 pontos</b></span>
@@ -241,7 +251,7 @@
                 </div>
               </div>
             </div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
         </div>
         <div class="dcard r-soft" data-reveal data-delay="2">
@@ -252,12 +262,12 @@
           </div>
           <div class="lphone lphone--rank" data-rank style="top:34.87%">
             <div class="lphone__scr">
-              <img class="rkf is-on" src="assets/screens/comm1.jpg?v=1" alt="" decoding="async" />
-              <img class="rkf" src="assets/screens/comm2.jpg?v=1" alt="" decoding="async" />
-              <img class="rkf" src="assets/screens/comm3.jpg?v=1" alt="" decoding="async" />
-              <img class="rkf" src="assets/screens/comm4.jpg?v=1" alt="" decoding="async" />
+              <img class="rkf is-on" src="assets/screens/comm1.webp" alt="" width="500" height="1426" loading="lazy" decoding="async" />
+              <img class="rkf" src="assets/screens/comm2.webp" alt="" width="500" height="1569" loading="lazy" decoding="async" />
+              <img class="rkf" src="assets/screens/comm3.webp" alt="" width="500" height="1569" loading="lazy" decoding="async" />
+              <img class="rkf" src="assets/screens/comm4.webp" alt="" width="500" height="1569" loading="lazy" decoding="async" />
             </div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
         </div>
       </div>
@@ -276,7 +286,7 @@
         <div class="snum" data-reveal data-delay="2"><span class="snum__n anton">+50</span><span class="snum__l">guias temáticos</span></div>
       </div>
     </div>
-    <div class="stats__img" data-reveal><img src="assets/img/stats-couple.jpg" alt="Casal jantando em um restaurante" decoding="async" /></div>
+    <div class="stats__img" data-reveal><img src="assets/img/stats-couple-1536.webp" srcset="assets/img/stats-couple-800.webp 800w, assets/img/stats-couple-1536.webp 1536w" sizes="(max-width: 860px) 94vw, 55vw" width="1536" height="1024" alt="Casal jantando em um restaurante" loading="lazy" decoding="async" /></div>
   </section>
 
   <!-- ---------- RECURSOS (bento, 6 cards) ---------- -->
@@ -291,29 +301,29 @@
       <div class="bento__r1">
         <div class="bcard b-listas bcard--red r-soft" data-reveal>
           <div class="lphone lphone--scroll" data-pan style="left:6.95%;top:-28%;width:39.3%">
-            <div class="lphone__scr"><img class="lphone__img" src="assets/img/app-detail.png" alt="" decoding="async" /></div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <div class="lphone__scr"><img class="lphone__img" src="assets/img/app-detail.webp" alt="" width="400" height="870" loading="lazy" decoding="async" /></div>
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
           <div class="bcard__txt b-listas__txt">
-            <img class="b-listas__seal" src="assets/img/seal.svg" alt="" aria-hidden="true" decoding="async" />
+            <img class="b-listas__seal" src="assets/img/seal.svg" alt="" aria-hidden="true" width="213" height="208" loading="lazy" decoding="async" />
             <h3 class="anton" data-split>Crie listas, salve seus guias favoritos</h3>
             <p data-reveal data-delay="1">Crie listas com amigos, salve seus guias favoritos, compartilhe suas descobertas.</p>
           </div>
         </div>
         <div class="bcard b-twophones bcard--light r-soft" data-reveal data-delay="1">
-          <img class="dcard__bg" src="assets/cards/compartilhe-card.jpg?v=2" alt="Compartilhe seu veredito" decoding="async" />
+          <img class="dcard__bg" src="assets/cards/compartilhe-card.webp" alt="Compartilhe seu veredito" width="1000" height="736" loading="lazy" decoding="async" />
         </div>
       </div>
       <div class="bento__r2">
         <div class="bcard b-explore bcard--light r-soft" data-reveal data-delay="1">
-          <img class="dcard__bg" src="assets/cards/bx-explore.png" alt="" aria-hidden="true" decoding="async" />
+          <img class="dcard__bg" src="assets/cards/bx-explore.webp" alt="" aria-hidden="true" width="422" height="743" loading="lazy" decoding="async" />
           <div class="lphone lphone--map" style="left:20.6%;top:23.1%;width:59%">
             <div class="lphone__scr" data-map>
-              <img class="map-slide is-on" src="assets/screens/map-1.jpg" alt="" decoding="async" />
-              <img class="map-slide" src="assets/screens/map-2.jpg" alt="" decoding="async" />
-              <img class="map-slide" src="assets/screens/map-3.jpg" alt="" decoding="async" />
+              <img class="map-slide is-on" src="assets/screens/map-1.webp" alt="" width="400" height="870" loading="lazy" decoding="async" />
+              <img class="map-slide" src="assets/screens/map-2.webp" alt="" width="400" height="870" loading="lazy" decoding="async" />
+              <img class="map-slide" src="assets/screens/map-3.webp" alt="" width="400" height="870" loading="lazy" decoding="async" />
             </div>
-            <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+            <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
           </div>
         </div>
         <div class="bento__rightcol">
@@ -324,17 +334,17 @@
             </div>
             <div class="b-guias__cards">
             <div class="gmarquee__track" data-gmarquee>
-              <span class="gcard"><img src="assets/cards/guia-1.webp" alt="Guia: para comer depois das 22h" decoding="async" /></span>
-              <span class="gcard"><img src="assets/cards/guia-2.webp" alt="Guia: elegantes e discretos" decoding="async" /></span>
-              <span class="gcard"><img src="assets/cards/guia-3.webp" alt="Guia: ambientes familiares e acolhedores" decoding="async" /></span>
-              <span class="gcard"><img src="assets/cards/guia-4.webp" alt="Guia: opções vegetarianas e veganas" decoding="async" /></span>
-              <span class="gcard"><img src="assets/cards/guia-5.webp" alt="Guia: restaurantes com música ao vivo" decoding="async" /></span>
+              <span class="gcard"><img src="assets/cards/guia-1.webp" width="356" height="475" loading="lazy" alt="Guia: para comer depois das 22h" decoding="async" /></span>
+              <span class="gcard"><img src="assets/cards/guia-2.webp" width="356" height="475" loading="lazy" alt="Guia: elegantes e discretos" decoding="async" /></span>
+              <span class="gcard"><img src="assets/cards/guia-3.webp" width="356" height="475" loading="lazy" alt="Guia: ambientes familiares e acolhedores" decoding="async" /></span>
+              <span class="gcard"><img src="assets/cards/guia-4.webp" width="356" height="475" loading="lazy" alt="Guia: opções vegetarianas e veganas" decoding="async" /></span>
+              <span class="gcard"><img src="assets/cards/guia-5.webp" width="184" height="238" loading="lazy" alt="Guia: restaurantes com música ao vivo" decoding="async" /></span>
             </div>
           </div>
           </div>
           <div class="bento__r3">
             <div class="bcard b-nota bcard--red r-soft" data-reveal data-delay="2">
-              <img class="dcard__bg" src="assets/cards/bx-nota.png" alt="" aria-hidden="true" decoding="async" />
+              <img class="dcard__bg" src="assets/cards/bx-nota.webp" alt="" aria-hidden="true" width="473" height="370" loading="lazy" decoding="async" />
               <div class="lphone lphone--nota" style="left:24.3%;top:-53%;width:50.9%">
                 <div class="lphone__scr">
                   <div class="nota">
@@ -347,7 +357,7 @@
                     <div class="nota__btn">Continuar</div>
                   </div>
                 </div>
-                <img class="lphone__frame" src="assets/img/iphone-frame.png" alt="" aria-hidden="true" decoding="async" />
+                <img class="lphone__frame" src="assets/img/iphone-frame.webp" alt="" aria-hidden="true" width="600" height="1211" loading="lazy" decoding="async" />
               </div>
             </div>
             <div class="bcard b-mascot bcard--light r-soft" data-reveal data-delay="3">
@@ -356,7 +366,7 @@
                 <div class="swm" data-swm="right"><b class="f">SELLO</b><b class="o">SELLO</b><b class="o">SELLO</b><b class="o">SELLO</b><b class="f">SELLO</b><b class="o">SELLO</b></div>
                 <div class="swm" data-swm="left"><b class="o">SELLO</b><b class="o">SELLO</b><b class="f">SELLO</b><b class="o">SELLO</b><b class="o">SELLO</b><b class="f">SELLO</b></div>
               </div>
-              <img class="b-mascot__img" src="assets/img/mascot-sello.png" alt="Mascote do Sello" decoding="async" />
+              <img class="b-mascot__img" src="assets/img/mascot-sello.webp" alt="Mascote do Sello" width="400" height="483" loading="lazy" decoding="async" />
             </div>
           </div>
         </div>
@@ -391,7 +401,7 @@
           </div>
         </div>
       </div>
-      <div class="faq__media" data-reveal data-delay="1"><img src="assets/img/faq-bar.jpg" alt="Pessoas conversando em um bar" decoding="async" /></div>
+      <div class="faq__media" data-reveal data-delay="1"><img src="assets/img/faq-bar-1536.webp" srcset="assets/img/faq-bar-800.webp 800w, assets/img/faq-bar-1536.webp 1536w" sizes="42vw" width="1536" height="1024" alt="Pessoas conversando em um bar" loading="lazy" decoding="async" /></div>
     </div>
   </section>
 
@@ -411,12 +421,58 @@
   </section>
 </div><!-- /.sheet -->
 
+<!-- ===================== EXPLORE (guias + bairros: links reais para o catálogo) ===================== -->
+<section class="xplore" id="explore" aria-labelledby="xplore-title">
+  <div class="wrap xplore__inner">
+    <span class="xplore__eye">Explore São Paulo</span>
+    <h2 class="xplore__title" id="xplore-title">Guias e bairros para <strong>decidir onde comer</strong></h2>
+    <p class="xplore__lead">Seleções editoriais por ocasião, cozinha e região. Cada restaurante tem nota de 0 a 10 e a indicação do que pedir.</p>
+
+    <div class="xplore__block">
+      <div class="xplore__head">
+        <h3 class="xplore__h">Explore os guias</h3>
+        <a class="xplore__all" href="/guias">Ver todos os guias de São Paulo</a>
+      </div>
+      <ul class="xplore__guides">
+        <li><a class="xg" href="/g/top-25-melhores"><span class="xg__name">Os 10 melhores de SP</span><span class="xg__desc">Os restaurantes que definem a gastronomia paulistana</span></a></li>
+        <li><a class="xg" href="/g/mesa-para-dois"><span class="xg__name">Mesa para dois</span><span class="xg__desc">Restaurantes para encontros e noites a dois</span></a></li>
+        <li><a class="xg" href="/g/depois-das-dez"><span class="xg__name">A noite é uma criança</span><span class="xg__desc">Onde comer em São Paulo depois das 22h</span></a></li>
+        <li><a class="xg" href="/g/massa-critica"><span class="xg__name">Quando tudo acaba em pizza</span><span class="xg__desc">Pizzarias que se destacam pela massa</span></a></li>
+        <li><a class="xg" href="/g/cru-e-preciso"><span class="xg__name">Cru e preciso</span><span class="xg__desc">Sushi e omakase levados a sério</span></a></li>
+        <li><a class="xg" href="/g/nonna-aprovaria"><span class="xg__name">Nonna aprovaria</span><span class="xg__desc">Restaurantes italianos de massa e molho</span></a></li>
+        <li><a class="xg" href="/g/no-ponto-certo"><span class="xg__name">No ponto certo</span><span class="xg__desc">Casas de carne com técnica e bom corte</span></a></li>
+        <li><a class="xg" href="/g/domingo-em-familia"><span class="xg__name">Domingo em família</span><span class="xg__desc">Almoços sem pressa para a mesa inteira</span></a></li>
+      </ul>
+    </div>
+
+    <div class="xplore__block">
+      <div class="xplore__head">
+        <h3 class="xplore__h">Onde comer por bairro</h3>
+      </div>
+      <ul class="xplore__bairros">
+        <li><a class="xb" href="/onde-comer/pinheiros">Restaurantes em Pinheiros</a></li>
+        <li><a class="xb" href="/onde-comer/itaim-bibi">Restaurantes no Itaim Bibi</a></li>
+        <li><a class="xb" href="/onde-comer/vila-madalena">Restaurantes na Vila Madalena</a></li>
+        <li><a class="xb" href="/onde-comer/jardins">Restaurantes nos Jardins</a></li>
+        <li><a class="xb" href="/onde-comer/liberdade">Restaurantes na Liberdade</a></li>
+        <li><a class="xb" href="/onde-comer/cerqueira-cesar">Restaurantes em Cerqueira César</a></li>
+        <li><a class="xb" href="/onde-comer/jardim-paulista">Restaurantes no Jardim Paulista</a></li>
+        <li><a class="xb" href="/onde-comer/vila-mariana">Restaurantes na Vila Mariana</a></li>
+        <li><a class="xb" href="/onde-comer/paraiso">Restaurantes no Paraíso</a></li>
+        <li><a class="xb" href="/onde-comer/higienopolis">Restaurantes em Higienópolis</a></li>
+        <li><a class="xb" href="/onde-comer/consolacao">Restaurantes na Consolação</a></li>
+        <li><a class="xb" href="/onde-comer/centro-historico-de-sao-paulo">Restaurantes no Centro Histórico</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <!-- ===================== CTA FINAL (Figma 2028:1752) ===================== -->
 <section class="cta-final" id="baixar">
   <div class="wrap cta-final__inner">
     <div class="cta-final__head">
       <h2 class="anton cta-final__title" id="manifesto" data-split>SEU PRÓXIMO<br />RESTAURANTE<br />JÁ ESTÁ TE ESPERANDO</h2>
-      <img class="cta-final__star" src="assets/img/cta-star.svg" alt="" aria-hidden="true" />
+      <img class="cta-final__star" src="assets/img/cta-star.svg" alt="" aria-hidden="true" width="188" height="177" loading="lazy" decoding="async" />
     </div>
     <p class="cta-final__sub" data-reveal data-delay="1">Curadoria editorial, inteligência e uma comunidade apaixonada por gastronomia. Tudo para ajudar você a escolher restaurantes que realmente valem a pena.</p>
     <div class="cta-final__btn" data-reveal data-delay="2"><a href="#baixar" class="btn btn--accent btn--app"><span class="btn__t">BAIXAR O APP</span></a></div>
@@ -433,9 +489,11 @@
           <a href="#baixar">Baixe o aplicativo</a>
           <a href="#recursos">Features</a>
           <a href="#faq">FAQ</a>
+          <a href="/guias">Guias de São Paulo</a>
         </div>
         <div class="fc__col">
           <h4 class="anton">Empresa</h4>
+          <a href="/sobre">Sobre o Sello</a>
           <a href="mailto:contato@selloapp.com.br" data-mailcopy="contato@selloapp.com.br">Nos contate</a>
           <a href="#">Suporte</a>
         </div>
@@ -446,7 +504,7 @@
         </div>
       </nav>
       <div class="fc__qr" data-reveal data-delay="1">
-        <div class="fc__qrcard"><img src="assets/img/qr.png?v=2" alt="QR para baixar o aplicativo Sello" decoding="async" /></div>
+        <div class="fc__qrcard"><img src="assets/img/qr.png?v=2" alt="QR para baixar o aplicativo Sello" width="640" height="640" loading="lazy" decoding="async" /></div>
         <span>Baixar Aplicativo</span>
       </div>
     </div>
@@ -485,7 +543,7 @@
 </div>
 
 <script src="js/lenis.min.js?v=1" defer></script>
-<script src="js/sello.js?v=56" defer></script>
+<script src="js/sello.js?v=57" defer></script>
 <!-- ── Medição ──────────────────────────────────────────────────────────────
      Vercel Web Analytics. Pageview vem de graça; o clique de download precisa
      ser marcado à mão, porque ele SAI do site direto para a loja da Apple ou

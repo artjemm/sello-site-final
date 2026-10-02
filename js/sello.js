@@ -193,23 +193,23 @@
   var star='<svg viewBox="0 0 24 24"><path d="m12 17.27 4.15 2.51c.76.46 1.69-.22 1.49-1.08l-1.1-4.72 3.67-3.18c.67-.58.31-1.68-.57-1.75l-4.83-.41-1.89-4.46c-.34-.81-1.5-.81-1.84 0L9.19 8.63l-4.83.41c-.88.07-1.24 1.17-.57 1.75l3.67 3.18-1.1 4.72c-.2.86.73 1.54 1.49 1.08z"/></svg>';
   var REVIEWS={                                            // pessoas (nome+foto) do Figma 2091:291; textos fornecidos pelo user (12 dos 15)
     '1':[
-      {a:'rev-giovanna.png', n:'Giovanna C.', q:'Achei um japonês que eu provavelmente nunca teria encontrado sozinha. Já virou um dos meus favoritos.'},
-      {a:'rev-nicolas.png',  n:'Nicolas K.',  q:'Gostei que as recomendações parecem ter um motivo. Não é só uma lista dos restaurantes mais famosos.'},
-      {a:'rev-tarcisio.png', n:'Tarcísio M.', q:'O guia de bares salvou nossa sexta. Todo mundo gostou do lugar.'},
-      {a:'rev-thales.png',   n:'Thales V.',   q:'Tenho o hábito de salvar lugares no Instagram e nunca lembrar depois. Aqui ficou muito mais organizado.'},
-      {a:'rev-joao.png',     n:'João T.',     q:'As descrições ajudam mais do que as notas. Dá pra entender se o restaurante combina com o momento.'},
-      {a:'rev-beatriz.png',  n:'Beatriz L.',  q:'Acabei conhecendo um bairro novo por causa de um restaurante que apareceu aqui.'}
+      {a:'rev-giovanna.webp', n:'Giovanna C.', q:'Achei um japonês que eu provavelmente nunca teria encontrado sozinha. Já virou um dos meus favoritos.'},
+      {a:'rev-nicolas.webp',  n:'Nicolas K.',  q:'Gostei que as recomendações parecem ter um motivo. Não é só uma lista dos restaurantes mais famosos.'},
+      {a:'rev-tarcisio.webp', n:'Tarcísio M.', q:'O guia de bares salvou nossa sexta. Todo mundo gostou do lugar.'},
+      {a:'rev-thales.webp',   n:'Thales V.',   q:'Tenho o hábito de salvar lugares no Instagram e nunca lembrar depois. Aqui ficou muito mais organizado.'},
+      {a:'rev-joao.webp',     n:'João T.',     q:'As descrições ajudam mais do que as notas. Dá pra entender se o restaurante combina com o momento.'},
+      {a:'rev-beatriz.webp',  n:'Beatriz L.',  q:'Acabei conhecendo um bairro novo por causa de um restaurante que apareceu aqui.'}
     ],
     '2':[
-      {a:'rev-mayara.png',   n:'Mayara M.',   q:'Já deixei de ir em lugar hypado porque a descrição mostrava exatamente o tipo de experiência que eu não queria.'},
-      {a:'rev-brenda.png',   n:'Brenda A.',   q:'Gostei que não parece uma rede social. Entro, escolho um lugar e pronto.'},
-      {a:'rev-joao-a.png',   n:'João A.',     q:'Achei legal que os guias não são óbvios. Descobri lugares que eu nunca tinha visto em outras listas.'},
-      {a:'rev-gabriel.png',  n:'Gabriel V.',  q:'Sempre travava quando alguém perguntava ‘onde vamos comer?’. Agora já tenho várias opções salvas.'},
-      {a:'rev-pamela.png',   n:'Pamela K.',   q:'É aquele tipo de app que você abre quando quer uma boa ideia, não quando quer ficar rolando infinitamente.'},
-      {a:'rev-fernanda.png', n:'Fernanda S.', q:'Gostei de ver que nem todo restaurante famoso está recomendado. Dá a sensação de que alguém realmente escolheu.'}
+      {a:'rev-mayara.webp',   n:'Mayara M.',   q:'Já deixei de ir em lugar hypado porque a descrição mostrava exatamente o tipo de experiência que eu não queria.'},
+      {a:'rev-brenda.webp',   n:'Brenda A.',   q:'Gostei que não parece uma rede social. Entro, escolho um lugar e pronto.'},
+      {a:'rev-joao-a.webp',   n:'João A.',     q:'Achei legal que os guias não são óbvios. Descobri lugares que eu nunca tinha visto em outras listas.'},
+      {a:'rev-gabriel.webp',  n:'Gabriel V.',  q:'Sempre travava quando alguém perguntava ‘onde vamos comer?’. Agora já tenho várias opções salvas.'},
+      {a:'rev-pamela.webp',   n:'Pamela K.',   q:'É aquele tipo de app que você abre quando quer uma boa ideia, não quando quer ficar rolando infinitamente.'},
+      {a:'rev-fernanda.webp', n:'Fernanda S.', q:'Gostei de ver que nem todo restaurante famoso está recomendado. Dá a sensação de que alguém realmente escolheu.'}
     ]
   };
-  function rcard(d){ return '<article class="rcard"><div class="rcard__stars" role="img" aria-label="5 estrelas">'+star+star+star+star+star+'</div><p class="rcard__quote">&ldquo;'+d.q+'&rdquo;</p><div class="rcard__by"><img class="rcard__av" src="assets/avatars/'+d.a+'" alt="" decoding="async" width="44" height="44" />'+d.n+'</div></article>'; }
+  function rcard(d){ return '<article class="rcard"><div class="rcard__stars" role="img" aria-label="5 estrelas">'+star+star+star+star+star+'</div><p class="rcard__quote">&ldquo;'+d.q+'&rdquo;</p><div class="rcard__by"><img class="rcard__av" src="assets/avatars/'+d.a+'" alt="" loading="lazy" decoding="async" width="44" height="44" />'+d.n+'</div></article>'; }
   /* marquees rodam em CSS keyframes (compositor): rAF por frame congela no iOS real (Low Power/ProMotion)
      e lia scrollWidth todo frame (layout forçado). JS só monta 2 conjuntos (2º = clone aria-hidden, loop
      sem costura) e mede o período pra manter a velocidade exata em px/s via --mq-dur. */
