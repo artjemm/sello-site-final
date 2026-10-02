@@ -17,6 +17,8 @@
 
 import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
 import { cartao, CSS_CARTAO } from './cartao.js';
+import { COZINHAS, aSlug, MINIMO } from './taxonomia.js';
+import { notasComunidade, fmtNota } from './notas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -29,6 +31,7 @@ const SITE = 'https://selloapp.com.br';
 // foto) ou quando nada foi encontrado.
 const OG_FALLBACK = `${SITE}/assets/img/hero.jpg`;
 const APP_STORE = 'https://apps.apple.com/br/app/sello/id6791353216';
+const APP_STORE_ID = '6791353216';
 const PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.sello.app';
 
 /** Impede que um nome de lista ou @ com `<` quebre a página — ou pior, injete
@@ -92,7 +95,9 @@ async function resolve(type, rawSlug) {
     // O endereço novo é o nome (z-deli-restaurante-delicatessen); o antigo é o
     // identificador interno (r632). Aceitar os dois mantém válido tudo que já
     // foi compartilhado e tudo que ainda venha de um app desatualizado.
-    const COLS = 'name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,rating_score,review_count,lat,lng,catalog_json';
+    // rating_score/review_count NÃO entram: são a nota do Google Maps, e o
+    // Google proíbe agregar nota de outro site no schema (ver fichaRestaurante).
+    const COLS = 'id,name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,lat,lng,catalog_json';
     const r =
       (await sb(
         `restaurants?share_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
@@ -101,7 +106,8 @@ async function resolve(type, rawSlug) {
         `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
       ));
     if (!r) return null;
-    return fichaRestaurante(r);
+    const [viz, notas] = await Promise.all([vizinhanca(r), notasComunidade()]);
+    return fichaRestaurante(r, viz, notas);
   }
 
   if (type === 'g') {
@@ -109,10 +115,18 @@ async function resolve(type, rawSlug) {
       `lists?slug=eq.${encodeURIComponent(slug)}&is_curated=eq.true&is_public=eq.true&select=id,title,slug,cover,subtitle,intro&limit=1`,
     );
     if (!g) return null;
-    const itens = await sbAll(
-      `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,hero_image,address,price_level,catalog_json)&order=position.asc&limit=200`,
-    );
-    return fichaGuia(g, itens);
+    const [itens, outros, notas] = await Promise.all([
+      sbAll(
+        `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,hero_image,address,price_level,catalog_json)&order=position.asc&limit=200`,
+      ),
+      // Outros guias, para a página não ser beco sem saída: quem leu um guia
+      // inteiro é exatamente quem abre o próximo.
+      sbAll(
+        `lists?is_curated=eq.true&is_public=eq.true&slug=neq.${encodeURIComponent(g.slug)}&select=title,slug&order=updated_at.desc&limit=6`,
+      ),
+      notasComunidade(),
+    ]);
+    return fichaGuia(g, itens, outros, notas);
   }
 
   if (type === 'l') {
@@ -139,6 +153,10 @@ async function resolve(type, rawSlug) {
       heading: l.title,
       kicker: `Lista de ${at}`,
       deepLink: `sello://userlist/${l.id}`,
+      // Lista de usuário é prévia de compartilhamento, não página de busca:
+      // conteúdo raso e criado por terceiros não deve disputar o índice com
+      // os guias editoriais.
+      noindex: true,
     };
   }
 
@@ -154,6 +172,7 @@ async function resolve(type, rawSlug) {
       heading: u.name || `@${u.username}`,
       kicker: `@${u.username}`,
       deepLink: `sello://user/${u.username}`,
+      noindex: true, // mesmo motivo das listas de usuário
     };
   }
 
@@ -196,11 +215,77 @@ function paragrafo(t) {
   return t ? '<p>' + esc(t) + '</p>' : '';
 }
 
-function fichaRestaurante(r) {
+/**
+ * O entorno de uma ficha: em que guias ela aparece, se o bairro e a cozinha
+ * dela têm página própria, e outras casas do mesmo bairro.
+ *
+ * Existe por um motivo de busca bem concreto: até aqui a ficha só linkava
+ * para a home, e as ~515 fichas viviam como folhas soltas — o Google só as
+ * achava pelo sitemap. Com isto cada ficha passa a apontar para as páginas
+ * que a contêm e para as vizinhas, e a árvore do site fecha.
+ *
+ * Só linka página que EXISTE: bairro e cozinha seguem o mesmo piso (MINIMO)
+ * que decide se a página nasce ou dá 404. Link interno para 404 é pior do
+ * que nenhum link.
+ *
+ * Falha aqui nunca derruba a ficha: cada consulta cai em lista vazia.
+ */
+async function vizinhanca(r) {
+  const c = r.catalog_json || {};
+  const bairro = c.neighborhood || '';
+  const cozinha = c.cuisine || '';
+  const [guias, doBairro, daCozinha] = await Promise.all([
+    r.id
+      ? sbAll(
+          `list_restaurants?restaurant_id=eq.${encodeURIComponent(r.id)}&select=lists!inner(title,slug,is_curated,is_public)&lists.is_curated=eq.true&lists.is_public=eq.true&limit=8`,
+        )
+      : [],
+    bairro
+      ? sbAll(
+          `restaurants?is_active=eq.true&catalog_json->>neighborhood=eq.${encodeURIComponent(bairro)}&select=name,slug,share_slug,catalog_json->>sello_score&limit=300`,
+        )
+      : [],
+    cozinha && COZINHAS[cozinha] && !COZINHAS[cozinha].guia
+      ? sbAll(
+          `restaurants?is_active=eq.true&catalog_json->>cuisine=eq.${encodeURIComponent(cozinha)}&select=slug&limit=300`,
+        )
+      : [],
+  ]);
+
+  const paginaBairro = doBairro.length >= MINIMO.bairro ? '/onde-comer/' + aSlug(bairro) : '';
+  // Cozinha com guia editorial aponta para o guia (é para lá que a página de
+  // cozinha redireciona, de propósito, para não canibalizar).
+  const tax = COZINHAS[cozinha];
+  const paginaCozinha = tax
+    ? tax.guia
+      ? '/g/' + tax.guia
+      : daCozinha.length >= MINIMO.cozinha
+        ? '/restaurantes/' + tax.slug
+        : ''
+    : '';
+
+  const vizinhos = doBairro
+    .filter((v) => v.slug !== r.slug && v.name)
+    .sort((a, b) => Number(b.sello_score || 0) - Number(a.sello_score || 0))
+    .slice(0, 4);
+
+  return {
+    guias: guias.map((g) => g.lists).filter((l) => l && l.slug && l.title),
+    paginaBairro,
+    paginaCozinha,
+    pluralCozinha: tax ? tax.plural : '',
+    vizinhos,
+  };
+}
+
+function fichaRestaurante(r, viz = {}, notas = new Map()) {
   const c = r.catalog_json || {};
   const cozinha = c.cuisine || c.sello_primary_category || '';
   const bairro = c.neighborhood || '';
   const preco = cifroes(c.price_range != null ? c.price_range : r.price_level);
+  // Nota da comunidade, a mesma do app (api/notas.js). Sem avaliação, sem nota.
+  const nc = notas.get(r.slug) || null;
+  const path = '/r/' + (r.share_slug || r.slug);
 
   /* O título é a linha azul do Google. "Confira o X" não é buscado por
    * ninguém; "X — Japonesa em Bela Vista" carrega o nome, a cozinha e o
@@ -239,6 +324,25 @@ function fichaRestaurante(r) {
   /* Cada seção só entra se o dado existir. Restaurante sem editorial cai numa
    * página curta — menos do que gostaríamos, mas honesta. Preencher buraco com
    * texto genérico era exatamente o problema que esta mudança resolve. */
+  const linkGuias = (viz.guias || [])
+    .map((g) => '<li><a href="/g/' + esc(g.slug) + '">' + esc(g.title) + '</a></li>')
+    .join('');
+  const linkVizinhos = (viz.vizinhos || [])
+    .map((v) => {
+      const vn = notas.get(v.slug);
+      const n = vn ? fmtNota(vn.media) : '';
+      return '<li><a href="/r/' + esc(v.share_slug || v.slug) + '">' + esc(v.name) + '</a>' +
+        (n ? ' <span class="meta">· nota ' + esc(n) + '</span>' : '') + '</li>';
+    })
+    .join('');
+  const explorar = [
+    viz.paginaBairro ? '<li><a href="' + esc(viz.paginaBairro) + '">Onde comer em ' + esc(bairro) + '</a></li>' : '',
+    viz.paginaCozinha && viz.pluralCozinha
+      ? '<li><a href="' + esc(viz.paginaCozinha) + '">Mais ' + esc(viz.pluralCozinha) + '</a></li>'
+      : '',
+    '<li><a href="/guias">Todos os guias do Sello</a></li>',
+  ].filter(Boolean).join('');
+
   const body = [
     secao('O take do Sello', paragrafo(c.sello_take_body)),
     secao('Por que ir', lista(c.why_go)),
@@ -247,6 +351,11 @@ function fichaRestaurante(r) {
     secao('O que a comunidade diz', paragrafo(c.community_summary)),
     horarios ? '<section><h2>Horários</h2><table>' + horarios + '</table></section>' : '',
     contato ? '<section><h2>Onde fica</h2><table>' + contato + '</table></section>' : '',
+    linkGuias ? '<section><h2>Aparece nos guias</h2><ul class="links">' + linkGuias + '</ul></section>' : '',
+    linkVizinhos && bairro
+      ? '<section><h2>Também em ' + esc(bairro) + '</h2><ul class="links">' + linkVizinhos + '</ul></section>'
+      : '',
+    '<section><h2>Explore</h2><ul class="links">' + explorar + '</ul></section>',
   ].filter(Boolean).join('');
 
   /* Schema de restaurante. Não é truque de AEO — é o caso em que o dado
@@ -258,7 +367,7 @@ function fichaRestaurante(r) {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
     name: r.name,
-    url: SITE + '/r/' + (r.share_slug || r.slug),
+    url: SITE + path,
   };
   if (r.hero_image) jsonld.image = r.hero_image;
   if (c.hook) jsonld.description = c.hook;
@@ -271,24 +380,49 @@ function fichaRestaurante(r) {
   if (r.lat && r.lng) {
     jsonld.geo = { '@type': 'GeoCoordinates', latitude: r.lat, longitude: r.lng };
   }
-  if (r.rating_score && r.review_count) {
+  /* Até 02/10/2026 ia aqui a nota do Google Maps (rating_score/review_count,
+   * ex.: 4,4 com 14.858 avaliações), que não aparecia na página. O Google
+   * proíbe as duas coisas — agregar nota de outro site e marcar conteúdo
+   * invisível. Agora o aggregateRating é a nota da COMUNIDADE do Sello:
+   * avaliações feitas aqui, por usuários, e visíveis no selo da página com o
+   * número de votos. É o caso que o Google aceita para um site de avaliações. */
+  if (nc) {
     jsonld.aggregateRating = {
       '@type': 'AggregateRating',
-      ratingValue: r.rating_score,
-      reviewCount: r.review_count,
-      bestRating: 5,
+      ratingValue: Number(nc.media.toFixed(1)),
+      bestRating: 10,
+      worstRating: 0,
+      ratingCount: nc.votos,
     };
   }
+
+  // Trilha: Início › bairro › restaurante. Só entra o degrau que tem página.
+  const trilha = [{ name: 'Início', url: SITE + '/' }];
+  if (viz.paginaBairro) trilha.push({ name: bairro, url: SITE + viz.paginaBairro });
+  trilha.push({ name: r.name, url: SITE + path });
 
   return {
     title: title,
     description: description,
     image: r.hero_image,
+    imageAlt: r.name,
     heading: r.name,
     kicker: [cozinha, bairro].filter(Boolean).join(' · ') || 'Restaurante',
+    nota: nc ? fmtNota(nc.media) : '',
+    votos: nc ? nc.votos : 0,
     deepLink: 'sello://restaurant/' + r.slug,
+    path: path,
+    trilha: trilha,
     body: body,
-    jsonld: jsonld,
+    jsonld: [jsonld, breadcrumbLd(trilha)],
+  };
+}
+
+function breadcrumbLd(trilha) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trilha.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name, item: t.url })),
   };
 }
 
@@ -304,14 +438,14 @@ function fichaRestaurante(r) {
  * porta de entrada a não ser alguém compartilhar o link por fora.
  * ────────────────────────────────────────────────────────────────────────── */
 
-function fichaGuia(g, itens) {
+function fichaGuia(g, itens, outros = [], notas = new Map()) {
   /* Mesmo cartao das paginas de descoberta: foto, nota, faixa de preco,
    * endereco e horario de hoje. Uma lista de nomes nao ajuda ninguem a decidir
    * onde jantar, e o dado para decidir ja estava no catalogo. */
   const restaurantes = (itens || [])
     .map((it) => it && it.restaurants)
     .filter((r) => r && r.name);
-  const linhas = restaurantes.map(cartao);
+  const linhas = restaurantes.map((r) => cartao(r, notas));
 
   /* O <title> usa o titulo de BUSCA quando existe; o nome editorial segue
    * como heading (o H1 que a pessoa le). Sao campos diferentes de proposito:
@@ -329,11 +463,23 @@ function fichaGuia(g, itens) {
   /* O intro NÃO entra no corpo: ele já é o parágrafo de abertura da página,
    * e repetir o mesmo texto duas vezes na mesma tela é o tipo de duplicação
    * que esta mudança existe para acabar. A lista é o conteúdo do guia. */
+  const maisGuias = (outros || [])
+    .filter((o) => o && o.slug && o.title)
+    .map((o) => '<li><a href="/g/' + esc(o.slug) + '">' + esc(o.title) + '</a></li>')
+    .join('');
   const body = [
     linhas.length
       ? '<section><h2>Os restaurantes deste guia</h2>' + linhas.join('') + '</section>'
       : '',
+    '<section><h2>Outros guias</h2><ul class="links">' + maisGuias +
+      '<li><a href="/guias">Ver todos os guias</a></li></ul></section>',
   ].filter(Boolean).join('');
+  const path = '/g/' + g.slug;
+  const trilha = [
+    { name: 'Início', url: SITE + '/' },
+    { name: 'Guias', url: SITE + '/guias' },
+    { name: g.title, url: SITE + path },
+  ];
 
   /* ItemList é o schema que descreve exatamente o que um guia é: uma lista
    * ordenada de lugares. Sem inventar tipo que não se aplica. */
@@ -357,16 +503,28 @@ function fichaGuia(g, itens) {
     title: title,
     description: description,
     image: g.cover,
+    imageAlt: g.title,
     heading: g.title,
     kicker: g.subtitle || 'Guia do Sello',
     deepLink: 'sello://list/' + g.slug,
+    path: path,
+    trilha: trilha,
     body: body,
-    jsonld: jsonld,
+    jsonld: [jsonld, breadcrumbLd(trilha)].filter(Boolean),
   };
 }
 
 function page(data, canonical) {
   const img = data.image || OG_FALLBACK;
+  const lds = (Array.isArray(data.jsonld) ? data.jsonld : [data.jsonld]).filter(Boolean);
+  // Trilha visível. O último degrau é a própria página: texto, não link.
+  const trilha = (data.trilha || []).length > 1
+    ? '<nav class="trilha" aria-label="Você está em">' +
+      data.trilha.map((t, i, a) =>
+        i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url.replace(SITE, '') || '/') + '">' + esc(t.name) + '</a>',
+      ).join(' <span aria-hidden="true">›</span> ') +
+      '</nav>'
+    : '';
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -375,6 +533,8 @@ function page(data, canonical) {
 <title>${esc(data.title)}</title>
 <meta name="description" content="${esc(data.description)}" />
 <link rel="canonical" href="${esc(canonical)}" />
+${data.noindex ? '<meta name="robots" content="noindex, follow" />' : ''}
+<meta name="apple-itunes-app" content="app-id=${APP_STORE_ID}, app-argument=${esc(canonical)}" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Sello" />
 <meta property="og:locale" content="pt_BR" />
@@ -386,7 +546,7 @@ function page(data, canonical) {
 <meta name="twitter:title" content="${esc(data.title)}" />
 <meta name="twitter:description" content="${esc(data.description)}" />
 <meta name="twitter:image" content="${esc(img)}" />
-${data.jsonld ? '<script type="application/ld+json">' + JSON.stringify(data.jsonld) + '</script>' : ''}
+${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>').join('\n')}
 <link rel="icon" href="/favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -430,16 +590,30 @@ ${data.jsonld ? '<script type="application/ld+json">' + JSON.stringify(data.json
   .primary { background:var(--red); color:#fff; }
   .stores { display:flex; gap:10px; margin-top:10px; }
   .stores a { flex:1; border:1.5px solid #E4E4E7; color:var(--ink); }
-  .foot { margin-top:28px; text-align:center; font-size:13px; }
+  .foot { margin-top:40px; text-align:center; font-size:13px; display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
   .foot a { color:var(--muted); }
+  .trilha { font-size:13px; color:var(--muted); margin:18px 0 0; }
+  .trilha a { color:var(--muted); }
+  .titulo { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+  .nota { flex:none; background:var(--red); color:#fff; border-radius:10px; padding:6px 10px 5px;
+          text-align:center; font-family:'Anton SC',sans-serif; font-size:24px; line-height:1; }
+  .nota small { display:block; font-family:'Open Sans',sans-serif; font-weight:700; font-size:9px;
+                letter-spacing:.08em; margin-top:4px; }
+  ul.links { list-style:none; padding:0; }
+  ul.links li { padding:6px 0; }
+  ul.links a { color:var(--ink); font-weight:600; }
 ${CSS_CARTAO}
 </style>
 </head>
 <body class="${data.body ? 'ficha' : ''}">
   <main class="card">
-    <img class="cover" src="${esc(img)}" alt="" onerror="this.src='${esc(OG_FALLBACK)}'" />
+    <img class="cover" src="${esc(img)}" alt="${esc(data.imageAlt || '')}" onerror="this.src='${esc(OG_FALLBACK)}'" />
+    ${trilha}
     <div class="kicker">${esc(data.kicker)}</div>
-    <h1>${esc(data.heading)}</h1>
+    <div class="titulo">
+      <h1>${esc(data.heading)}</h1>
+      ${data.nota ? '<div class="nota" aria-label="Nota da comunidade: ' + esc(data.nota) + ' de 10, ' + esc(data.votos) + (data.votos === 1 ? ' avaliação' : ' avaliações') + '">' + esc(data.nota) + '<small>' + esc(data.votos) + (data.votos === 1 ? ' AVALIAÇÃO' : ' AVALIAÇÕES') + '</small></div>' : ''}
+    </div>
     <p>${esc(data.description)}</p>
     <a class="cta primary" href="${esc(data.deepLink)}">Abrir no Sello</a>
     <div class="stores">
@@ -447,7 +621,7 @@ ${CSS_CARTAO}
       <a class="cta" href="${PLAY_STORE}">Google Play</a>
     </div>
     ${data.body || ''}
-    <div class="foot"><a href="${SITE}">selloapp.com.br</a></div>
+    <div class="foot"><a href="/">Início</a><a href="/guias">Guias</a><a href="/sobre">Sobre o Sello</a></div>
   </main>
 <script>
   // Quem já tem o app vai direto para a tela certa. Só depois de um gesto? Não:
@@ -459,10 +633,13 @@ ${CSS_CARTAO}
   // Quem chega de uma BUSCA veio ler a página — mandar essa pessoa para o app
   // apaga o conteúdo que ela pediu e a devolve para o Google. O botão acima
   // segue ali para os dois casos, então ninguém perde o caminho.
-  var deBusca = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|brave)\./i.test(
-    (document.referrer || '').replace(/^https?:\/\//, '').split('/')[0]
-  );
-  if (!deBusca) {
+  // O mesmo vale para quem chega de um assistente de IA (ChatGPT, Perplexity,
+  // Gemini, Copilot, Claude): veio ler. E só tenta no celular — no computador
+  // não existe app para abrir, e o navegador mostra erro de esquema.
+  var origem = (document.referrer || '').replace(/^https?:\/\//, '').split('/')[0];
+  var veioLer = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|brave|chatgpt|openai|perplexity|gemini|copilot|claude|you)\./i.test(origem);
+  var celular = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+  if (celular && !veioLer && !/[?&]nr=1/.test(location.search)) {
     setTimeout(function () { location.href = ${JSON.stringify(data.deepLink)}; }, 400);
   }
 </script>
@@ -546,5 +723,20 @@ export default async function handler(req, res) {
   // Cache curto na borda: a prévia do WhatsApp fica estável e uma edição de
   // título aparece em minutos, não em dias.
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=3600');
-  res.status(200).send(page(data, canonical));
+
+  /* Um restaurante, um endereço. O mesmo lugar responde por /r/r632 (id
+   * antigo), /r/nome--r632 (link decorado do app) e /r/nome (o oficial), e
+   * cada um se declarava canônico — o Google via três páginas iguais
+   * dividindo os mesmos sinais. Agora o oficial vem do registro encontrado e
+   * os outros redirecionam para ele com 301. Robôs de prévia (WhatsApp,
+   * Instagram) seguem redirect, então link já compartilhado continua com
+   * prévia. */
+  if (data.path && data.path !== `/${type}/${slug}`) {
+    const q = String(req.url || '').split('?')[1] || '';
+    const extra = q.split('&').filter((p) => p && !/^(type|slug)=/.test(p)).join('&');
+    res.setHeader('Location', SITE + data.path + (extra ? '?' + extra : ''));
+    res.status(301).end();
+    return;
+  }
+  res.status(200).send(page(data, data.path ? SITE + data.path : canonical));
 }

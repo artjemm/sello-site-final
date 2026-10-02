@@ -10,6 +10,8 @@
  * vez de uma lista de links repetida.
  */
 
+import { fmtNota } from './notas.js';
+
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 export function esc(s) {
@@ -59,10 +61,13 @@ function ruaCurta(endereco) {
   return String(endereco ?? '').split(' - ')[0].trim();
 }
 
-export function cartao(r) {
+/** `notas` é o mapa de notasComunidade() (api/notas.js). Sem ele, ou sem
+ *  avaliação para o lugar, o cartão não mostra nota — igual ao app. */
+export function cartao(r, notas) {
   const c = r.catalog_json || {};
   const href = '/r/' + (r.share_slug || r.slug);
-  const nota = c.sello_score ?? c.display_rating_10;
+  const nc = notas && notas.get ? notas.get(r.slug) : null;
+  const nota = nc ? fmtNota(nc.media) : '';
   const preco = cifroes(c.price_range != null ? c.price_range : r.price_level);
   const linha = [c.cuisine, c.neighborhood, preco].filter(Boolean).join(' · ');
   const hoje = horarioDeHoje(c.hours);
@@ -79,7 +84,9 @@ export function cartao(r) {
       `<a class="ct__foto" href="${esc(href)}" aria-label="${esc(r.name)}">${foto}</a>` +
       `<div class="ct__corpo">` +
         `<h3 class="ct__nome"><a href="${esc(href)}">${esc(r.name)}</a>` +
-          (nota ? `<span class="ct__nota">${esc(Number(nota).toFixed(1))}</span>` : '') +
+          (nota
+            ? `<span class="ct__nota" title="Nota da comunidade: ${esc(nc.votos)} ${nc.votos === 1 ? 'avaliação' : 'avaliações'}">${esc(nota)}</span>`
+            : '') +
         `</h3>` +
         (linha ? `<p class="ct__meta">${esc(linha)}</p>` : '') +
         (c.hook ? `<p class="ct__hook">${esc(c.hook)}</p>` : '') +
