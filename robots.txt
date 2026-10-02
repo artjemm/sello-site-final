@@ -1,3 +1,6 @@
+# Tudo liberado, de propósito — inclusive os robôs de IA (GPTBot, ClaudeBot,
+# PerplexityBot, Google-Extended...). Ser citado por um assistente quando alguém
+# pergunta onde comer é um canal de descoberta, não um risco.
 User-agent: *
 Allow: /
 
