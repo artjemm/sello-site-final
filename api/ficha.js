@@ -1,18 +1,37 @@
 /**
- * Layout da ficha de restaurante (/r/:slug) — out/2026.
+ * Layout da ficha de restaurante (/r/:slug) — out/2026, v2.
  *
- * A estrutura segue o que as pessoas já sabem ler numa página de restaurante
- * (a do Tripadvisor é a referência): galeria no topo, abas fixas, coluna ao
- * lado com o que se consulta de pé na calçada — está aberto? onde fica? — e as
- * seções em ordem de decisão. A cara é a do Sello: Anton SC nos títulos, Open
- * Sans no texto, vermelho só para o que importa, superfícies claras.
+ * INFORMAÇÃO: segue a página de restaurante que as pessoas já sabem ler
+ * (Tripadvisor) — posição e tipo embaixo do nome, abas fixas, coluna ao lado
+ * com o que se consulta de pé na calçada (está aberto? onde fica?) e as
+ * seções em ordem de decisão.
  *
- * O conteúdo é o mesmo de antes (share.js monta os dados); aqui é só a forma.
- * Nada é inventado para preencher layout: seção sem dado não aparece.
+ * PELE: é a HOME, de verdade — não uma imitação. A página carrega o mesmo
+ * css/sello.css e js/sello.js (com o Lenis) e usa as mesmas peças:
+ *   .nav            a pílula de vidro que acende quando a folha passa por baixo
+ *   .hero           capa fixa (sticky) com o texto que esmaece ao rolar
+ *   .sheet          a folha branca de cantos de 44px que sobe sobre a capa, com o selo
+ *   .btn + .btn__t  pílulas com a "letra que vira" no hover
+ *   [data-split]    títulos em Anton SC com palavras subindo
+ *   [data-reveal]   blocos entrando ao rolar (data-delay escalona)
+ *   .xg / .xb       cartões de guia e pílulas da seção Explore
+ *   .finalcta       o rodapé
+ * Mudou a home, muda aqui. O CSS abaixo (CSS_FICHA) é só o que a home não
+ * tem: abas, coluna lateral, pratos, nota, fotos, horário, mapa.
+ *
+ * O conteúdo vem pronto de share.js; aqui é só a forma. Seção sem dado some.
  */
 
 import { esc } from './cartao.js';
 import { fmtNota } from './notas.js';
+
+/* Versões dos arquivos da home — as mesmas que o index.html pede, para o
+ * navegador reaproveitar o cache de quem veio de lá. */
+export const ASSETS_HOME = {
+  css: '/css/sello.css?v=136',
+  lenis: '/js/lenis.min.js?v=1',
+  js: '/js/sello.js?v=57',
+};
 
 const MELHOR_PARA = {
   date: 'Encontro', special: 'Ocasião especial', casual: 'Dia a dia', quick: 'Rápido', brunch: 'Brunch',
@@ -21,8 +40,24 @@ const PAGAMENTO = {
   pix: 'Pix', credit_card: 'Crédito', debit_card: 'Débito', cash: 'Dinheiro', nfc: 'Aproximação',
 };
 
-/** Foto do Storage redimensionada pela largura (sem corte — o corte é do CSS).
- *  URL de fora do nosso Storage passa intacta. */
+/* Ícones de traço 24×24, no desenho dos ícones do app (Ionicons outline). */
+const IC = {
+  pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  tel: '<path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  insta: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".8"/>',
+  web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  menu: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/>',
+  card: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3"/>',
+  seta: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  esq: '<path d="M15 5l-7 7 7 7"/>',
+  dir: '<path d="M9 5l7 7-7 7"/>',
+  baixo: '<path d="m6 9 6 6 6-6"/>',
+};
+const icone = (n, cls) => '<svg class="' + (cls || 'fx-ic') + '" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>';
+
+/** Foto do Storage redimensionada pela largura (o corte é do CSS). URL de fora
+ *  do nosso Storage passa intacta. */
 export function foto(u, largura) {
   const s = String(u ?? '');
   if (!s.includes('/storage/v1/object/public/')) return s;
@@ -30,7 +65,17 @@ export function foto(u, largura) {
     (s.includes('?') ? '&' : '?') + 'width=' + largura + '&quality=72';
 }
 
-/** "$$" com os cifrões que faltam até quatro em cinza — como no app. */
+/** Os tamanhos da capa, para o srcset e para o preload em share.js. */
+export function srcsetCapa(u) {
+  return [800, 1280, 1920].map((w) => foto(u, w) + ' ' + w + 'w').join(', ');
+}
+
+/** Botão da home: pílula, Anton SC, letras que viram (o js/sello.js quebra o
+ *  texto de .btn__t em letras). */
+function botao(href, texto, mod, extra) {
+  return '<a class="btn ' + (mod || 'btn--accent') + '" href="' + esc(href) + '"' + (extra || '') + '><span class="btn__t">' + esc(texto) + '</span></a>';
+}
+
 function precoVisual(n) {
   const v = Number(n);
   if (!(v >= 1 && v <= 4)) return '';
@@ -43,8 +88,7 @@ function credito(a) {
   return t ? '<span class="fx-credito">' + esc(t) + '</span>' : '';
 }
 
-/** As fotos da página: capa primeiro, depois a galeria, sem repetir. Cada uma
- *  leva o crédito que o catálogo exige mostrar. */
+/** Capa primeiro, depois a galeria, sem repetir; cada foto com seu crédito. */
 function fotosDe(r, c) {
   const vistas = new Set();
   const out = [];
@@ -58,115 +102,11 @@ function fotosDe(r, c) {
   return out;
 }
 
-function mosaico(fotos, nome) {
-  if (!fotos.length) return '';
-  const tiles = fotos.slice(0, 5).map((f, i) =>
-    '<a class="fx-mosaico__item' + (i === 0 ? ' fx-mosaico__item--grande' : '') + '" href="#fotos">' +
-      '<img src="' + esc(foto(f.url, i === 0 ? 1200 : 600)) + '" alt="' + esc(nome + ' — foto ' + (i + 1)) + '"' +
-      (i === 0 ? ' fetchpriority="high"' : ' loading="lazy"') + ' decoding="async" />' +
-      credito(f.attr) +
-      (i === 4 && fotos.length > 5 ? '<span class="fx-mosaico__mais">+' + (fotos.length - 5) + ' fotos</span>' : '') +
-    '</a>').join('');
-  return '<div class="fx-mosaico fx-mosaico--' + Math.min(fotos.length, 5) + '">' + tiles + '</div>';
-}
-
-function galeria(fotos, nome) {
-  if (fotos.length < 2) return '';
-  return '<section class="fx-sec" id="fotos"><h2 class="fx-h2">Fotos</h2><div class="fx-galeria">' +
-    fotos.map((f, i) =>
-      '<figure><img src="' + esc(foto(f.url, 400)) + '" alt="' + esc(nome + ' — foto ' + (i + 1)) +
-      '" loading="lazy" decoding="async" />' + credito(f.attr) + '</figure>').join('') +
-    '</div></section>';
-}
-
-function pratos(c) {
-  const lista = ((c.dishes && c.dishes.must_order) || []).filter((d) => d && d.name);
-  if (!lista.length) return '';
-  return '<section class="fx-sec" id="pedir"><h2 class="fx-h2">O que pedir</h2><div class="fx-pratos">' +
-    lista.map((d, i) =>
-      '<article class="fx-prato' + (d.image ? '' : ' fx-prato--sem-foto') + '">' +
-        (d.image ? '<img src="' + esc(foto(d.image, 480)) + '" alt="' + esc(d.name) + '" loading="lazy" decoding="async" />' : '') +
-        '<div class="fx-prato__txt"><span class="fx-prato__n">' + (i + 1) + '</span>' +
-        '<h3>' + esc(d.name) + '</h3>' + (d.note ? '<p>' + esc(d.note) + '</p>' : '') + '</div>' +
-      '</article>').join('') +
-    '</div></section>';
-}
-
-function avaliacoes(c, nc, deepLink) {
-  const caixa = nc
-    ? '<div class="fx-nota-grande"><strong>' + esc(fmtNota(nc.media)) + '</strong><span>de 10</span></div>' +
-      '<div><p class="fx-nota-legenda">Nota da comunidade do Sello</p><p class="fx-muted">Média de ' + nc.votos +
-      (nc.votos === 1 ? ' avaliação' : ' avaliações') + ' de quem foi e avaliou no app.</p></div>'
-    : '<div><p class="fx-nota-legenda">Ainda sem avaliações da comunidade</p>' +
-      '<p class="fx-muted">Foi lá? Seja a primeira avaliação, no app.</p></div>';
-  return '<section class="fx-sec" id="avaliacoes"><h2 class="fx-h2">Avaliações</h2>' +
-    '<div class="fx-aval">' + caixa + '</div>' +
-    (c.community_summary
-      ? '<h3 class="fx-h3">O que dizem de lá</h3><blockquote class="fx-citacao">' + esc(c.community_summary) + '</blockquote>'
-      : '') +
-    '<a class="fx-btn fx-btn--contorno" href="' + esc(deepLink) + '">Avaliar no app</a>' +
-    '</section>';
-}
-
-function horario(c) {
-  const linhas = (c.hours || []).filter((h) => h && h.label);
-  if (!linhas.length) return '';
-  return '<section class="fx-sec" id="horario"><h2 class="fx-h2">Horário</h2><table class="fx-horas">' +
-    linhas.map((h) => '<tr data-dia="' + esc(h.label) + '"><th>' + esc(h.label) + '</th><td>' + esc(h.value) + '</td></tr>').join('') +
-    '</table><p class="fx-muted fx-nota-rodape">Horário publicado pela casa. Feriados podem mudar.</p></section>';
-}
-
-function mapa(r, c, bairro) {
-  if (!r.address && !(r.lat && r.lng)) return '';
-  const lat = Number(r.lat), lng = Number(r.lng);
-  const temCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat && lng;
-  const d = 0.004;
-  const embed = temCoord
-    ? '<iframe class="fx-mapa" title="Mapa de ' + esc(r.name) + '" loading="lazy" src="' +
-      esc('https://www.openstreetmap.org/export/embed.html?bbox=' + (lng - d) + ',' + (lat - d) + ',' + (lng + d) + ',' + (lat + d) +
-        '&layer=mapnik&marker=' + lat + ',' + lng) + '"></iframe>'
-    : '';
-  const rotas = c.google_maps_uri || (temCoord ? 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng : '');
-  const chegar = (c.getting_there || []).map((g) => g && (g.label || g.text)).filter(Boolean);
-  return '<section class="fx-sec" id="local"><h2 class="fx-h2">Localização</h2>' + embed +
-    (r.address ? '<p class="fx-endereco">' + esc(r.address) + '</p>' : '') +
-    (chegar.length ? '<ul class="fx-lista">' + chegar.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') +
-    (rotas ? '<a class="fx-btn fx-btn--contorno" rel="nofollow noopener" target="_blank" href="' + esc(rotas) + '">Como chegar</a>' : '') +
-    '</section>';
-}
-
-function lateral(r, c, d) {
-  const pg = (r.payment_methods || c.payment_methods || []).map((p) => PAGAMENTO[p]).filter(Boolean);
-  const periodos = (r.hours_periods || c.hours_periods || []).filter((p) => p && p.open && p.close);
-  const linhas = [
-    periodos.length
-      ? '<div class="fx-agora" data-periodos="' + esc(JSON.stringify(periodos.map((p) => [p.open.day, p.open.time, p.close.day, p.close.time]))) + '">' +
-        '<span class="fx-agora__ponto"></span><span class="fx-agora__txt">Ver horário</span></div>'
-      : '',
-    r.address ? '<div class="fx-info"><span class="fx-info__r">Endereço</span><a href="#local">' + esc(String(r.address).split(' - ')[0]) +
-      (d.bairro ? ' · ' + esc(d.bairro) : '') + '</a></div>' : '',
-    r.phone ? '<div class="fx-info"><span class="fx-info__r">Telefone</span><a href="tel:' + esc(String(r.phone).replace(/[^\d+]/g, '')) + '">' + esc(r.phone) + '</a></div>' : '',
-    r.instagram ? '<div class="fx-info"><span class="fx-info__r">Instagram</span><a rel="nofollow noopener" target="_blank" href="https://instagram.com/' + esc(r.instagram) + '">@' + esc(r.instagram) + '</a></div>' : '',
-    r.website ? '<div class="fx-info"><span class="fx-info__r">Site</span><a rel="nofollow noopener" target="_blank" href="' + esc(r.website) + '">' + esc(String(r.website).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')) + '</a></div>' : '',
-    r.menu_url ? '<div class="fx-info"><span class="fx-info__r">Cardápio</span><a rel="nofollow noopener" target="_blank" href="' + esc(r.menu_url) + '">Ver cardápio</a></div>' : '',
-    pg.length ? '<div class="fx-info"><span class="fx-info__r">Pagamento</span><span>' + esc(pg.join(' · ')) + '</span></div>' : '',
-  ].filter(Boolean).join('');
-  return '<aside class="fx-lado"><div class="fx-cartao">' + linhas +
-    '<a class="fx-btn fx-btn--primario" href="' + esc(d.deepLink) + '">Abrir no Sello</a>' +
-    '<div class="fx-lojas"><a class="fx-btn fx-btn--contorno" href="' + esc(d.appStore) + '">App Store</a>' +
-    '<a class="fx-btn fx-btn--contorno" href="' + esc(d.playStore) + '">Google Play</a></div>' +
-    '</div></aside>';
-}
-
 /**
- * A linha embaixo do nome: "Nº 3 de 26 avaliados em Pinheiros · Japonesa, $$$".
- *
- * A posição é pela nota média da COMUNIDADE (a mesma do selo), só entre os
- * lugares com ao menos 3 avaliações — com uma ou duas, um 10,0 diz mais sobre
- * quem avaliou do que sobre o lugar, e o ranking viraria sorteio. Por isso o
- * texto diz "avaliados" e não "restaurantes": o total é de quem entrou na
- * conta, não do bairro inteiro. Lugar fora da conta não ganha posição; a linha
- * fica só com cozinha e preço.
+ * A linha embaixo do nome: "Nº 3 de 26 avaliados em Pinheiros | Pizza, $$".
+ * Posição pela nota média da COMUNIDADE, só entre lugares com 3+ avaliações
+ * (com uma ou duas, um 10,0 diz mais de quem avaliou que do lugar) — daí
+ * "avaliados", não "restaurantes". Fora da conta, a linha fica só com o tipo.
  */
 function linhaPosicao(d, preco) {
   const p = d.posicao;
@@ -175,39 +115,196 @@ function linhaPosicao(d, preco) {
       'Nº ' + p.n + ' de ' + p.total + ' avaliados ' + esc(p.onde) + '</a>'
     : '';
   const tipo = [d.cozinha ? esc(d.cozinha) : '', preco].filter(Boolean).join(', ');
-  return pos || tipo ? '<p class="fx-linha">' + pos + (pos && tipo ? '<span class="fx-linha__sep"></span>' : '') + (tipo ? '<span>' + tipo + '</span>' : '') + '</p>' : '';
+  return pos || tipo
+    ? '<p class="fx-linha hero-in hero-in--1">' + pos + (pos && tipo ? '<span class="fx-linha__sep"></span>' : '') + (tipo ? '<span>' + tipo + '</span>' : '') + '</p>'
+    : '';
 }
 
-function listaLinks(titulo, itens) {
-  const li = itens.filter(Boolean).join('');
-  return li ? '<section class="fx-sec"><h2 class="fx-h2">' + esc(titulo) + '</h2><ul class="fx-pilulas">' + li + '</ul></section>' : '';
-}
-
-/**
- * O <main> inteiro da ficha. `d` vem pronto de share.js: nome, cozinha,
- * bairro, nota (nc), links de guias/vizinhos/explorar e o "Em resumo".
- */
-export function layoutRestaurante(r, c, d) {
-  const fotos = fotosDe(r, c);
+/* A capa é o .hero da home: fixa, a folha passa por cima, o texto esmaece ao
+ * rolar (js/sello.js). Sem as classes de reveal no texto — ele é o LCP e tem
+ * que pintar no primeiro quadro, como na home. */
+function capa(r, c, d, fotos) {
+  const f = fotos[0];
   const chips = (c.best_for || []).map((b) => MELHOR_PARA[b]).filter(Boolean);
   const nGuias = (d.guias || []).length;
-
-  const topo =
-    '<header class="fx-topo">' +
-      d.trilhaHtml +
-      '<div class="fx-kicker">' + esc([d.bairro, d.cidade && d.cidade.nome].filter(Boolean).join(' · ') || 'Restaurante') + '</div>' +
-      '<h1 class="fx-h1">' + esc(r.name) + '</h1>' +
+  return '<section class="hero fx-hero' + (f ? '' : ' fx-hero--sem-foto') + '">' +
+    (f
+      ? '<div class="hero__media"><img src="' + esc(foto(f.url, 1280)) + '" srcset="' + esc(srcsetCapa(f.url)) +
+        '" sizes="100vw" alt="' + esc(r.name) + '" fetchpriority="high" decoding="async" /></div>'
+      : '') +
+    '<div class="hero__scrim fx-hero__scrim"></div>' +
+    '<div class="hero__content wrap">' +
+      d.trilhaHtml.replace('class="trilha"', 'class="trilha fx-trilha hero-in"') +
+      '<p class="hero__eyebrow hero-in">' + esc([d.bairro, d.cidade && d.cidade.nome].filter(Boolean).join(' · ') || 'Restaurante') + '</p>' +
+      '<h1 class="hero__title fx-titulo hero-in">' + esc(r.name) + '</h1>' +
       linhaPosicao(d, precoVisual(c.price_range != null ? c.price_range : r.price_level)) +
-      (c.hook ? '<p class="fx-gancho">' + esc(c.hook) + '</p>' : '') +
-      '<div class="fx-meta">' +
+      (c.hook ? '<p class="hero__sub fx-sub hero-in hero-in--1">' + esc(c.hook) + '</p>' : '') +
+      '<div class="fx-meta hero-in hero-in--2">' +
         (d.nc
           ? '<a class="fx-selo" href="#avaliacoes" aria-label="Nota da comunidade: ' + esc(fmtNota(d.nc.media)) + ' de 10">' +
             '<strong>' + esc(fmtNota(d.nc.media)) + '</strong><span>' + d.nc.votos + (d.nc.votos === 1 ? ' avaliação' : ' avaliações') + '</span></a>'
           : '') +
-        (nGuias ? '<a class="fx-meta__guias" href="#guias">Em ' + nGuias + (nGuias === 1 ? ' guia' : ' guias') + ' do Sello</a>' : '') +
+        (nGuias ? '<a class="fx-vidro" href="#guias">Em ' + nGuias + (nGuias === 1 ? ' guia' : ' guias') + ' do Sello</a>' : '') +
+        chips.map((t) => '<span class="fx-vidro">' + esc(t) + '</span>').join('') +
       '</div>' +
-      (chips.length ? '<ul class="fx-chips">' + chips.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') +
-    '</header>';
+      '<div class="fx-acoes hero-in hero-in--2">' +
+        botao(d.deepLink, 'Abrir no Sello', 'btn--accent btn--app') +
+        (fotos.length > 1 ? botao('#fotos', 'Ver ' + fotos.length + ' fotos', 'btn--white btn--app') : '') +
+      '</div>' +
+    '</div>' +
+    (f && f.attr && f.attr.attribution_text ? '<span class="fx-hero__credito">' + esc(f.attr.attribution_text) + '</span>' : '') +
+    '<div class="hero__scroll" aria-hidden="true"><span class="hero__scroll-label">Role para ver mais</span>' +
+      '<svg class="hero__scroll-ico" viewBox="0 0 24 24">' + IC.baixo + '</svg></div>' +
+  '</section>';
+}
+
+/** Seção com o cabeçalho da home: olho vermelho + título Anton com palavras
+ *  subindo (data-split). O corpo entra com data-reveal. */
+function secao(id, olho, titulo, corpo, extra) {
+  return '<section class="fx-sec"' + (id ? ' id="' + id + '"' : '') + '>' +
+    (olho ? '<span class="xplore__eye">' + esc(olho) + '</span>' : '') +
+    '<h2 class="fx-h2" data-split>' + esc(titulo) + '</h2>' +
+    '<div class="fx-sec__corpo" data-reveal>' + corpo + '</div>' + (extra || '') + '</section>';
+}
+
+function visaoGeral(c, d) {
+  const corpo =
+    (d.resumoHtml ? d.resumoHtml.replace('<section class="resumo">', '<div class="fx-resumo">').replace(/<\/section>$/, '</div>') : '') +
+    (c.sello_take_body
+      ? '<div class="fx-take"><span class="fx-take__aspas" aria-hidden="true">“</span>' +
+        '<span class="xplore__eye fx-take__olho">O take do Sello</span>' +
+        (c.sello_take_title ? '<h3 class="fx-take__t">' + esc(c.sello_take_title) + '</h3>' : '') +
+        '<p>' + esc(c.sello_take_body) + '</p></div>'
+      : '') +
+    ((c.why_go || []).filter(Boolean).length
+      ? '<h3 class="fx-h3">Por que ir</h3><ul class="fx-check">' +
+        c.why_go.filter(Boolean).map((t, i) => '<li class="chip" style="--i:' + i + '"><span class="chip__ic" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff"/></svg>' +
+          '</span><span>' + esc(t) + '</span></li>').join('') + '</ul>'
+      : '') +
+    (c.what_to_expect ? '<h3 class="fx-h3">O que esperar</h3><p class="fx-p">' + esc(c.what_to_expect) + '</p>' : '') +
+    ((c.curiosities || []).length
+      ? '<h3 class="fx-h3">Bom saber</h3><ul class="fx-bom">' +
+        c.curiosities.map((x) => x && (x.text || x)).filter((t) => typeof t === 'string' && t)
+          .map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>'
+      : '');
+  return secao('resumo', 'Visão geral', 'Sobre o lugar', corpo);
+}
+
+function pratos(c) {
+  const lista = ((c.dishes && c.dishes.must_order) || []).filter((d) => d && d.name);
+  if (!lista.length) return '';
+  return secao('pedir', 'Do cardápio', 'O que pedir', '<div class="fx-pratos">' +
+    lista.map((d, i) =>
+      '<article class="fx-prato' + (d.image ? '' : ' fx-prato--sem-foto') + '" style="--i:' + i + '">' +
+        '<div class="fx-prato__media">' +
+          (d.image ? '<img src="' + esc(foto(d.image, 480)) + '" alt="' + esc(d.name) + '" loading="lazy" decoding="async" />' : '') +
+          '<span class="fx-prato__n">' + (i + 1) + '</span>' +
+        '</div>' +
+        '<div class="fx-prato__txt"><h3>' + esc(d.name) + '</h3>' + (d.note ? '<p>' + esc(d.note) + '</p>' : '') + '</div>' +
+      '</article>').join('') + '</div>');
+}
+
+function avaliacoes(c, nc, deepLink) {
+  const nota = nc
+    ? '<div class="fx-nota">' +
+        '<div class="fx-nota__n"><strong data-fx-conta="' + esc(nc.media.toFixed(1)) + '">' + esc(fmtNota(nc.media)) + '</strong><span>de 10</span></div>' +
+        '<p class="fx-nota__l">Nota da comunidade</p>' +
+        '<p class="fx-nota__s">Média de ' + nc.votos + (nc.votos === 1 ? ' avaliação' : ' avaliações') + ' de quem foi e avaliou no app.</p>' +
+        '<div class="fx-nota__barra"><i style="--v:' + Math.max(0, Math.min(1, nc.media / 10)).toFixed(3) + '"></i></div>' +
+      '</div>'
+    : '<div class="fx-nota fx-nota--vazia"><div class="fx-nota__n"><strong>—</strong></div>' +
+      '<p class="fx-nota__l">Ainda sem avaliações</p><p class="fx-nota__s">Foi lá? Seja a primeira nota, no app.</p></div>';
+  const dizem = c.community_summary
+    ? '<figure class="fx-dizem"><span class="fx-dizem__aspas" aria-hidden="true">“</span>' +
+      '<blockquote>' + esc(c.community_summary) + '</blockquote><figcaption>O que dizem de lá</figcaption></figure>'
+    : '';
+  return secao('avaliacoes', 'Comunidade', 'Avaliações',
+    '<div class="fx-aval">' + nota + dizem + '</div>',
+    '<div class="fx-sec__acao" data-reveal data-delay="1">' + botao(deepLink, 'Avaliar no app', 'btn--dark') + '</div>');
+}
+
+function galeria(fotos, nome) {
+  if (fotos.length < 2) return '';
+  const MAX = 9;
+  return secao('fotos', fotos.length + ' fotos', 'Fotos', '<div class="fx-bento">' +
+    fotos.slice(0, MAX).map((f, i) =>
+      '<button type="button" class="fx-bento__item" data-fx-foto="' + i + '" style="--i:' + i + '" aria-label="Ampliar foto ' + (i + 1) + '">' +
+        '<img src="' + esc(foto(f.url, i === 0 ? 900 : 480)) + '" data-grande="' + esc(foto(f.url, 1600)) + '" alt="' + esc(nome + ' — foto ' + (i + 1)) +
+        '" loading="lazy" decoding="async" />' + credito(f.attr) +
+        (i === MAX - 1 && fotos.length > MAX ? '<span class="fx-bento__mais">+' + (fotos.length - MAX) + '</span>' : '') +
+      '</button>').join('') +
+    '</div>' +
+    // As que passam das 9 visíveis entram só no visualizador.
+    fotos.slice(MAX).map((f) => '<template data-fx-extra data-grande="' + esc(foto(f.url, 1600)) + '" data-credito="' +
+      esc((f.attr && f.attr.attribution_text) || '') + '"></template>').join(''));
+}
+
+function horario(c) {
+  const linhas = (c.hours || []).filter((h) => h && h.label);
+  if (!linhas.length) return '';
+  return secao('horario', 'Quando ir', 'Horário', '<ul class="fx-horas">' +
+    linhas.map((h) => '<li data-dia="' + esc(h.label) + '"><span class="fx-horas__d">' + esc(h.label) + '</span>' +
+      '<span class="fx-horas__v">' + esc(h.value) + '</span></li>').join('') +
+    '</ul><p class="fx-rodape-sec">Horário publicado pela casa. Feriados podem mudar.</p>');
+}
+
+function mapa(r, c) {
+  if (!r.address && !(r.lat && r.lng)) return '';
+  const lat = Number(r.lat), lng = Number(r.lng);
+  const temCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat && lng;
+  const d = 0.004;
+  const embed = temCoord
+    ? '<div class="fx-mapa"><iframe title="Mapa de ' + esc(r.name) + '" loading="lazy" src="' +
+      esc('https://www.openstreetmap.org/export/embed.html?bbox=' + (lng - d) + ',' + (lat - d) + ',' + (lng + d) + ',' + (lat + d) +
+        '&layer=mapnik&marker=' + lat + ',' + lng) + '"></iframe>' +
+      (r.address ? '<div class="fx-mapa__card">' + icone('pin') + '<span>' + esc(r.address) + '</span></div>' : '') + '</div>'
+    : (r.address ? '<p class="fx-endereco">' + esc(r.address) + '</p>' : '');
+  const rotas = c.google_maps_uri || (temCoord ? 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng : '');
+  const chegar = (c.getting_there || []).map((g) => g && (g.label || g.text)).filter(Boolean);
+  return secao('local', 'Onde fica', 'Localização',
+    embed + (chegar.length ? '<ul class="fx-chegar">' + chegar.map((t) => '<li>' + icone('seta') + '<span>' + esc(t) + '</span></li>').join('') + '</ul>' : ''),
+    rotas ? '<div class="fx-sec__acao" data-reveal data-delay="1">' + botao(rotas, 'Como chegar', 'btn--dark', ' rel="nofollow noopener" target="_blank"') + '</div>' : '');
+}
+
+function lateral(r, c, d) {
+  const pg = (r.payment_methods || c.payment_methods || []).map((p) => PAGAMENTO[p]).filter(Boolean);
+  const periodos = (r.hours_periods || c.hours_periods || []).filter((p) => p && p.open && p.close);
+  const info = (ic, rot, val) => '<div class="fx-info">' + icone(ic) + '<div><span class="fx-info__r">' + rot + '</span>' + val + '</div></div>';
+  const linhas = [
+    r.address ? info('pin', 'Endereço', '<a href="#local">' + esc(String(r.address).split(' - ')[0]) + (d.bairro ? ' · ' + esc(d.bairro) : '') + '</a>') : '',
+    r.phone ? info('tel', 'Telefone', '<a href="tel:' + esc(String(r.phone).replace(/[^\d+]/g, '')) + '">' + esc(r.phone) + '</a>') : '',
+    r.instagram ? info('insta', 'Instagram', '<a rel="nofollow noopener" target="_blank" href="https://instagram.com/' + esc(r.instagram) + '">@' + esc(r.instagram) + '</a>') : '',
+    r.website ? info('web', 'Site', '<a rel="nofollow noopener" target="_blank" href="' + esc(r.website) + '">' + esc(String(r.website).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')) + '</a>') : '',
+    r.menu_url ? info('menu', 'Cardápio', '<a rel="nofollow noopener" target="_blank" href="' + esc(r.menu_url) + '">Ver cardápio</a>') : '',
+    pg.length ? info('card', 'Pagamento', '<span>' + esc(pg.join(' · ')) + '</span>') : '',
+  ].filter(Boolean).join('');
+  return '<aside class="fx-lado"><div class="fx-cartao" data-reveal>' +
+    (periodos.length
+      ? '<div class="fx-agora" data-periodos="' + esc(JSON.stringify(periodos.map((p) => [p.open.day, p.open.time, p.close.day, p.close.time]))) + '">' +
+        '<span class="fx-agora__ponto"></span><span class="fx-agora__txt">Horário</span></div>'
+      : '') +
+    linhas +
+    '<div class="fx-cartao__cta">' + botao(d.deepLink, 'Abrir no Sello', 'btn--accent btn--app fx-btn-bloco') +
+    '<div class="fx-lojas"><a href="' + esc(d.appStore) + '">App Store</a><a href="' + esc(d.playStore) + '">Google Play</a></div></div>' +
+    '</div></aside>';
+}
+
+/** Pílulas no padrão da home (.xb). `itens` = [{ href, txt, nota? }]. */
+function pilulas(itens) {
+  return itens.length
+    ? '<ul class="xplore__bairros">' + itens.map((x) =>
+        '<li><a class="xb fx-xb" href="' + esc(x.href) + '">' + esc(x.txt) + (x.nota ? '<b>' + esc(x.nota) + '</b>' : '') + '</a></li>').join('') + '</ul>'
+    : '';
+}
+
+/**
+ * O conteúdo do <body>: barra, capa, folha com abas, conteúdo e rodapé da
+ * home, mais a barra de app (celular) e o visualizador de fotos.
+ * `d` vem de share.js; `explorar` chega como [{ href, txt }].
+ */
+export function layoutRestaurante(r, c, d) {
+  const fotos = fotosDe(r, c);
 
   const abas = [
     ['resumo', 'Visão geral'],
@@ -217,248 +314,463 @@ export function layoutRestaurante(r, c, d) {
     (c.hours || []).length ? ['horario', 'Horário'] : null,
     (r.address || r.lat) ? ['local', 'Localização'] : null,
   ].filter(Boolean);
-  const nav = '<nav class="fx-abas" aria-label="Seções"><div class="fx-abas__in">' +
-    abas.map(([id, t]) => '<a href="#' + id + '">' + esc(t) + '</a>').join('') + '</div></nav>';
-
-  const visao = '<section class="fx-sec" id="resumo">' +
-    (d.resumoHtml || '') +
-    (c.sello_take_body
-      ? '<div class="fx-take"><span class="fx-take__eye">O take do Sello</span>' +
-        (c.sello_take_title ? '<h3 class="fx-h3">' + esc(c.sello_take_title) + '</h3>' : '') +
-        '<p>' + esc(c.sello_take_body) + '</p></div>'
-      : '') +
-    ((c.why_go || []).length
-      ? '<h3 class="fx-h3">Por que ir</h3><ul class="fx-lista fx-lista--check">' +
-        c.why_go.filter(Boolean).map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>'
-      : '') +
-    (c.what_to_expect ? '<h3 class="fx-h3">O que esperar</h3><p class="fx-p">' + esc(c.what_to_expect) + '</p>' : '') +
-    ((c.curiosities || []).length
-      ? '<h3 class="fx-h3">Bom saber</h3><ul class="fx-lista">' +
-        c.curiosities.map((x) => x && (x.text || x)).filter((t) => typeof t === 'string' && t).map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>'
-      : '') +
-    '</section>';
 
   const guias = (d.guias || []).length
-    ? '<section class="fx-sec" id="guias"><h2 class="fx-h2">Aparece nos guias</h2><ul class="fx-pilulas">' +
-      d.guias.map((g) => '<li><a href="/g/' + esc(g.slug) + '">' + esc(g.title) + '</a></li>').join('') + '</ul></section>'
+    ? secao('guias', 'Curadoria', 'Aparece nos guias', '<ul class="xplore__guides fx-guias">' +
+        d.guias.map((g) => '<li><a class="xg" href="/g/' + esc(g.slug) + '"><span class="xg__name">' + esc(g.title) + '</span>' +
+          '<span class="xg__desc">Guia do Sello</span></a></li>').join('') + '</ul>')
+    : '';
+  const vizinhos = (d.vizinhos || []).length && d.bairro
+    ? secao('', 'Por perto', 'Também em ' + d.bairro, pilulas(d.vizinhos))
     : '';
 
-  const principal = '<div class="fx-col">' +
-    visao + pratos(c) + avaliacoes(c, d.nc, d.deepLink) + galeria(fotos, r.name) + horario(c) + mapa(r, c, d.bairro) +
-    guias +
-    (d.vizinhosHtml ? '<section class="fx-sec"><h2 class="fx-h2">Também em ' + esc(d.bairro) + '</h2>' + d.vizinhosHtml + '</section>' : '') +
-    listaLinks('Explore', d.explorar || []) +
-    '</div>';
-
-  return '<main class="fx">' +
-    '<div class="fx-wrap">' + topo + mosaico(fotos, r.name) + '</div>' +
-    nav +
-    '<div class="fx-wrap fx-grade">' + principal + lateral(r, c, d) + '</div>' +
-    '</main>';
+  return '' +
+  '<header class="nav" id="nav"><div class="nav__inner">' +
+    '<a class="nav__brand" href="/" aria-label="Sello — início"><span class="nav__wordmark" aria-hidden="true"></span></a>' +
+    '<nav class="nav__menu" aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>' +
+    botao('/baixar', 'Baixar o app', 'btn--accent btn--app') +
+  '</div></header>' +
+  '<main id="top">' +
+    capa(r, c, d, fotos) +
+    '<div class="sheet fx-folha">' +
+      '<img src="/assets/img/seal.svg" alt="" class="sheet__seal" aria-hidden="true" width="80" height="80" decoding="async" />' +
+      '<nav class="fx-abas" aria-label="Seções"><div class="fx-abas__in">' +
+        abas.map(([id, t]) => '<a href="#' + id + '">' + esc(t) + '</a>').join('') +
+        '<i class="fx-abas__barra" aria-hidden="true"></i>' +
+      '</div></nav>' +
+      '<div class="wrap fx-grade">' +
+        '<div class="fx-col">' +
+          visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink) + galeria(fotos, r.name) +
+          horario(c) + mapa(r, c) + guias + vizinhos +
+          ((d.explorar || []).length ? secao('', 'Continue', 'Explore', pilulas(d.explorar)) : '') +
+        '</div>' +
+        lateral(r, c, d) +
+      '</div>' +
+    '</div>' +
+    // O fecho da home: manifesto + botão, e o rodapé vermelho subindo por cima.
+    '<section class="cta-final">' +
+      '<div class="wrap cta-final__inner">' +
+        '<div class="cta-final__head">' +
+          '<h2 class="anton cta-final__title" data-split>SEU PRÓXIMO<br />RESTAURANTE<br />JÁ ESTÁ TE ESPERANDO</h2>' +
+          '<img class="cta-final__star" src="/assets/img/cta-star.svg" alt="" aria-hidden="true" width="188" height="177" loading="lazy" decoding="async" />' +
+        '</div>' +
+        '<p class="cta-final__sub" data-reveal data-delay="1">Curadoria editorial, inteligência e uma comunidade apaixonada por gastronomia. Tudo para ajudar você a escolher restaurantes que realmente valem a pena.</p>' +
+        '<div class="cta-final__btn" data-reveal data-delay="2">' + botao('/baixar', 'Baixar o app', 'btn--accent btn--app') + '</div>' +
+      '</div>' +
+    '</section>' +
+      '<footer class="finalcta">' +
+        '<div class="wrap fc">' +
+          '<div class="fc__top">' +
+            '<nav class="fc__cols" aria-label="Rodapé">' +
+              '<div class="fc__col"><h4 class="anton">Produto</h4><a href="/baixar">Baixe o aplicativo</a><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></div>' +
+              '<div class="fc__col"><h4 class="anton">Empresa</h4><a href="/sobre">Sobre o Sello</a><a href="mailto:contato@selloapp.com.br">Nos contate</a></div>' +
+              '<div class="fc__col"><h4 class="anton">Socials</h4><a href="https://instagram.com/sello_oficial" target="_blank" rel="noopener">Instagram</a></div>' +
+            '</nav>' +
+            '<div class="fc__qr" data-reveal data-delay="1"><div class="fc__qrcard"><img src="/assets/img/qr.png?v=2" alt="QR para baixar o aplicativo Sello" width="640" height="640" loading="lazy" decoding="async" /></div><span>Baixar Aplicativo</span></div>' +
+          '</div>' +
+          '<div class="fc__legal"><span>2026 SELLO — ALL RIGHTS RESERVED</span><a href="/privacidade">POLÍTICA DE PRIVACIDADE</a><a href="/termos">TERMOS DE USO</a></div>' +
+        '</div>' +
+        '<span class="fc__wm" aria-hidden="true"></span>' +
+      '</footer>' +
+  '</main>' +
+  '<div class="fx-barra-app" id="fx-barra-app" role="complementary" aria-label="Abrir no app">' +
+    '<span class="fx-barra-app__selo" aria-hidden="true"></span>' +
+    '<p><strong>Salve e avalie no app</strong><span>Mapa, listas e a nota de quem foi.</span></p>' +
+    '<a class="fx-barra-app__abrir" href="' + esc(d.deepLink) + '">Abrir</a>' +
+    '<button type="button" class="fx-barra-app__x" aria-label="Fechar">' + icone('x') + '</button>' +
+  '</div>' +
+  '<div class="fx-lb" id="fx-lb" hidden aria-modal="true" role="dialog" aria-label="Fotos">' +
+    '<button type="button" class="fx-lb__x" aria-label="Fechar">' + icone('x') + '</button>' +
+    '<button type="button" class="fx-lb__nav fx-lb__nav--esq" aria-label="Anterior">' + icone('esq') + '</button>' +
+    '<figure class="fx-lb__fig"><img alt="" /><figcaption></figcaption></figure>' +
+    '<button type="button" class="fx-lb__nav fx-lb__nav--dir" aria-label="Próxima">' + icone('dir') + '</button>' +
+    '<span class="fx-lb__cont"></span>' +
+  '</div>';
 }
 
-/* "Aberto agora" e o dia de hoje na tabela: calculados no NAVEGADOR, no fuso
- * de São Paulo. A página fica em cache na borda por minutos; se o servidor
- * escrevesse "aberto", a frase envelheceria dentro do cache. */
+/* ═══════════════════════════════ Movimento da ficha ═══════════════════════════
+ * O da home (nav, letras, títulos, reveal, Lenis) vem do js/sello.js. Aqui só
+ * o que é da ficha: abas com a barra deslizando, a nota contando, a barra do
+ * app no celular, o visualizador de fotos e o "aberto agora" — calculado no
+ * navegador, no fuso de São Paulo, porque a página fica em cache na borda e
+ * uma frase escrita no servidor envelheceria lá dentro. */
 export const JS_FICHA = `
 (function () {
-  var el = document.querySelector('.fx-agora');
-  var DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  var reduz = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var $$ = function (s, el) { return [].slice.call((el || document).querySelectorAll(s)); };
+  var hero = $('.fx-hero');
+
+  /* Âncoras internas: com o Lenis ligado o salto nativo é seco; deixa ele rolar. */
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a || a.getAttribute('href').length < 2) return;
+    var alvo = $(a.getAttribute('href'));
+    if (!alvo) return;
+    e.preventDefault();
+    if (window.lenis) window.lenis.scrollTo(alvo, { offset: -150, duration: 1.2 });
+    else alvo.scrollIntoView({ behavior: reduz ? 'auto' : 'smooth' });
+  });
+
+  /* Barra do app (celular): aparece quando a folha cobre a capa; fechada, some na visita. */
+  var barraApp = $('#fx-barra-app'), fechou = false, tick = false;
+  try { fechou = sessionStorage.getItem('fx-barra-app') === '1'; } catch (e) {}
+  function rolou() {
+    tick = false;
+    if (barraApp && !fechou) barraApp.classList.toggle('visivel', (window.scrollY || 0) > (hero ? hero.offsetHeight * 0.85 : 500));
+  }
+  window.addEventListener('scroll', function () { if (!tick) { tick = true; requestAnimationFrame(rolou); } }, { passive: true });
+  if (barraApp) $('.fx-barra-app__x', barraApp).addEventListener('click', function () {
+    fechou = true; barraApp.classList.remove('visivel');
+    try { sessionStorage.setItem('fx-barra-app', '1'); } catch (e) {}
+  });
+
+  /* A nota conta até o valor quando entra na tela. */
+  function contar(el) {
+    var alvo = parseFloat(el.getAttribute('data-fx-conta')); if (!isFinite(alvo) || reduz) return;
+    var t0 = null;
+    function f(t) { if (!t0) t0 = t; var k = Math.min((t - t0) / 1200, 1); k = 1 - Math.pow(1 - k, 3);
+      el.textContent = (alvo * k).toFixed(1).replace('.', ','); if (k < 1) requestAnimationFrame(f); }
+    requestAnimationFrame(f);
+  }
+  if ('IntersectionObserver' in window) {
+    var ioN = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { contar(e.target); ioN.unobserve(e.target); } });
+    }, { threshold: 0.6 });
+    $$('[data-fx-conta]').forEach(function (el) { ioN.observe(el); });
+  }
+
+  /* Abas: a barra vermelha desliza até a seção da vez. */
+  var abas = $$('.fx-abas a'), barra = $('.fx-abas__barra');
+  function marcar(a) {
+    abas.forEach(function (x) { x.classList.toggle('ativo', x === a); });
+    if (barra && a) { barra.style.width = a.offsetWidth + 'px'; barra.style.transform = 'translateX(' + a.offsetLeft + 'px)'; }
+    var trilho = a && a.parentNode;
+    if (trilho && trilho.scrollWidth > trilho.clientWidth) trilho.scrollTo({ left: a.offsetLeft - 20, behavior: reduz ? 'auto' : 'smooth' });
+  }
+  if (abas.length) {
+    requestAnimationFrame(function () { marcar(abas[0]); });
+    if ('IntersectionObserver' in window) {
+      var ioA = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          var a = abas.filter(function (x) { return x.getAttribute('href') === '#' + e.target.id; })[0];
+          if (a) marcar(a);
+        });
+      }, { rootMargin: '-35% 0px -60% 0px' });
+      abas.forEach(function (a) { var s = $(a.getAttribute('href')); if (s) ioA.observe(s); });
+    }
+    window.addEventListener('resize', function () { marcar($('.fx-abas a.ativo') || abas[0]); });
+  }
+
+  /* Aberto agora / dia de hoje — fuso de São Paulo. */
   try {
+    var DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
     var p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
-    var get = function (t) { return (p.find(function (x) { return x.type === t; }) || {}).value; };
+    var get = function (t) { return (p.filter(function (x) { return x.type === t; })[0] || {}).value; };
     var dia = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(get('weekday'));
     var agora = dia * 1440 + Number(get('hour')) * 60 + Number(get('minute'));
-    var hoje = document.querySelector('.fx-horas tr[data-dia="' + DIAS[dia] + '"]');
+    var hoje = $('.fx-horas li[data-dia="' + DIAS[dia] + '"]');
     if (hoje) hoje.classList.add('hoje');
-    if (!el) return;
-    var per = JSON.parse(el.getAttribute('data-periodos') || '[]');
-    var min = function (d, t) { t = String(t).padStart(4, '0'); return d * 1440 + Number(t.slice(0, 2)) * 60 + Number(t.slice(2)); };
-    var hh = function (t) { t = String(t).padStart(4, '0'); return t.slice(0, 2) + ':' + t.slice(2); };
-    var semana = 7 * 1440, aberto = null, proximo = null;
-    per.forEach(function (x) {
-      var a = min(x[0], x[1]), f = min(x[2], x[3]);
-      if (f <= a) f += semana;
-      [agora, agora + semana].forEach(function (n) { if (n >= a && n < f) aberto = x; });
-      var falta = (a - agora + semana) % semana;
-      if (!proximo || falta < proximo.falta) proximo = { falta: falta, x: x };
-    });
-    var txt = el.querySelector('.fx-agora__txt');
-    if (aberto) { el.classList.add('aberto'); txt.textContent = 'Aberto agora · fecha às ' + hh(aberto[3]); }
-    else if (proximo) {
-      el.classList.add('fechado');
-      txt.textContent = 'Fechado agora · abre ' + (proximo.x[0] === dia ? 'hoje' : DIAS[proximo.x[0]].toLowerCase()) + ' às ' + hh(proximo.x[1]);
+    var el = $('.fx-agora');
+    if (el) {
+      var per = JSON.parse(el.getAttribute('data-periodos') || '[]');
+      var pad = function (t) { t = String(t); while (t.length < 4) t = '0' + t; return t; };
+      var min = function (d, t) { t = pad(t); return d * 1440 + Number(t.slice(0, 2)) * 60 + Number(t.slice(2)); };
+      var hh = function (t) { t = pad(t); return t.slice(0, 2) + ':' + t.slice(2); };
+      var aberto = null, prox = null;
+      per.forEach(function (x) {
+        var a = min(x[0], x[1]), f = min(x[2], x[3]); if (f <= a) f += 10080;
+        [agora, agora + 10080].forEach(function (n) { if (n >= a && n < f) aberto = x; });
+        var falta = (a - agora + 10080) % 10080;
+        if (!prox || falta < prox.falta) prox = { falta: falta, x: x };
+      });
+      var txt = $('.fx-agora__txt', el);
+      if (aberto) { el.classList.add('aberto'); txt.innerHTML = '<b>Aberto agora</b> · fecha às ' + hh(aberto[3]); }
+      else if (prox) { el.classList.add('fechado'); txt.innerHTML = '<b>Fechado agora</b> · abre ' + (prox.x[0] === dia ? 'hoje' : DIAS[prox.x[0]].toLowerCase()) + ' às ' + hh(prox.x[1]); }
     }
   } catch (e) {}
-  // Aba ativa conforme a rolagem.
-  var links = [].slice.call(document.querySelectorAll('.fx-abas a'));
-  if (links[0]) links[0].classList.add('ativo');
-  if (!('IntersectionObserver' in window) || !links.length) return;
-  var io = new IntersectionObserver(function (es) {
-    es.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      links.forEach(function (a) { a.classList.toggle('ativo', a.getAttribute('href') === '#' + e.target.id); });
+
+  /* Visualizador de fotos. */
+  var lb = $('#fx-lb');
+  if (lb) {
+    var itens = $$('[data-fx-foto] img').map(function (im) {
+      var cr = im.parentNode.querySelector('.fx-credito');
+      return { src: im.getAttribute('data-grande'), credito: cr ? cr.textContent : '' };
+    }).concat($$('template[data-fx-extra]').map(function (t) {
+      return { src: t.getAttribute('data-grande'), credito: t.getAttribute('data-credito') };
+    }));
+    var atual = 0, img = $('img', lb), cap = $('figcaption', lb), cont = $('.fx-lb__cont', lb), voltar = null;
+    var mostrar = function (i) {
+      atual = (i + itens.length) % itens.length;
+      lb.classList.remove('troca'); void lb.offsetWidth; lb.classList.add('troca');
+      img.src = itens[atual].src; cap.textContent = itens[atual].credito; cont.textContent = (atual + 1) + ' / ' + itens.length;
+    };
+    var abrir = function (i) {
+      voltar = document.activeElement; lb.hidden = false; mostrar(i);
+      requestAnimationFrame(function () { lb.classList.add('aberto'); });
+      if (window.lenis) window.lenis.stop(); document.documentElement.style.overflow = 'hidden'; $('.fx-lb__x', lb).focus();
+    };
+    var fechar = function () {
+      lb.classList.remove('aberto'); document.documentElement.style.overflow = '';
+      if (window.lenis) window.lenis.start();
+      setTimeout(function () { lb.hidden = true; }, 350); if (voltar) voltar.focus();
+    };
+    $$('[data-fx-foto]').forEach(function (b) { b.addEventListener('click', function () { abrir(Number(b.getAttribute('data-fx-foto'))); }); });
+    $('.fx-lb__x', lb).addEventListener('click', fechar);
+    $('.fx-lb__nav--esq', lb).addEventListener('click', function () { mostrar(atual - 1); });
+    $('.fx-lb__nav--dir', lb).addEventListener('click', function () { mostrar(atual + 1); });
+    lb.addEventListener('click', function (e) { if (e.target === lb) fechar(); });
+    document.addEventListener('keydown', function (e) {
+      if (lb.hidden) return;
+      if (e.key === 'Escape') fechar(); else if (e.key === 'ArrowLeft') mostrar(atual - 1); else if (e.key === 'ArrowRight') mostrar(atual + 1);
     });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  links.forEach(function (a) { var s = document.querySelector(a.getAttribute('href')); if (s) io.observe(s); });
+    var x0 = null;
+    lb.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    lb.addEventListener('touchend', function (e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) mostrar(atual + (dx < 0 ? 1 : -1)); x0 = null; });
+  }
 })();
 `;
 
+/* Só o que a home não tem. Tokens (--red, --ink, --pink, --line, --ease,
+ * --font-disp…) vêm do :root do css/sello.css. */
 export const CSS_FICHA = `
-  body.rest { display:block; padding:0; background:#fff; }
-  .fx-barra { border-bottom:1px solid #EEEEF1; background:#fff; }
-  .fx-barra__in { max-width:1180px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:22px; }
-  .fx-logo { font-family:'Anton SC',sans-serif; font-size:24px; color:var(--red); text-decoration:none; letter-spacing:.02em; line-height:1; padding-top:3px; }
-  .fx-barra nav { display:flex; gap:18px; font-size:14px; font-weight:600; }
-  .fx-barra nav a { color:var(--ink); text-decoration:none; }
-  .fx-barra nav a:hover { color:var(--red); }
-  .fx-barra .fx-btn { margin-left:auto; padding:9px 16px; font-size:14px; }
-  .fx-wrap { max-width:1180px; margin:0 auto; padding:0 24px; }
-  .fx-topo { padding:18px 0 18px; }
-  .fx-topo .trilha { margin:0 0 14px; }
-  .fx-kicker { font-size:13px; color:var(--red); font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
-  .fx-h1 { font-family:'Anton SC',sans-serif; font-weight:400; text-transform:uppercase; font-size:clamp(32px,4.6vw,52px);
-           line-height:1.12; padding-top:.06em; margin:0 0 8px; }
-  .fx-linha { display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; margin:2px 0 12px; font-size:15px; color:var(--ink); }
-  .fx-linha__pos { color:var(--ink); font-weight:600; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:1px; }
-  .fx-linha__pos:hover { color:var(--red); }
-  .fx-linha__sep { width:1px; height:16px; background:#D5D7DD; }
-  .fx-linha .fx-preco { font-size:15px; }
-  .fx-gancho { font-size:17px; color:var(--muted); line-height:1.5; margin:0 0 14px; max-width:760px; }
-  .fx-meta { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; }
-  .fx-selo { display:inline-flex; align-items:center; gap:8px; background:var(--red); color:#fff; border-radius:999px;
-             padding:5px 14px 5px 6px; text-decoration:none; }
-  .fx-selo strong { background:#fff; color:var(--red); border-radius:999px; padding:3px 10px 1px; font-family:'Anton SC',sans-serif;
-                    font-weight:400; font-size:19px; line-height:1.15; }
-  .fx-selo span { font-size:13px; font-weight:700; }
-  .fx-preco { font-weight:700; font-size:16px; letter-spacing:.04em; }
-  .fx-preco__off { color:#C9CCD3; }
-  .fx-meta__guias { font-size:14px; font-weight:600; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
-  .fx-chips { list-style:none; display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; padding:0; }
-  .fx-chips li { background:#FBE9EC; color:var(--red); font-size:13px; font-weight:700; border-radius:999px; padding:6px 12px; }
+  .fx-ic { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
-  .fx-mosaico { display:grid; gap:8px; border-radius:20px; overflow:hidden; height:min(460px,52vw);
-                grid-template-columns:2fr 1fr 1fr; grid-template-rows:1fr 1fr; }
-  .fx-mosaico__item { position:relative; display:block; background:#EEE; overflow:hidden; }
-  .fx-mosaico__item img { width:100%; height:100%; object-fit:cover; transition:transform .5s cubic-bezier(.16,1,.3,1); }
-  .fx-mosaico__item:hover img { transform:scale(1.04); }
-  .fx-mosaico__item--grande { grid-row:1 / span 2; }
-  .fx-mosaico--1 { grid-template-columns:1fr; }
-  .fx-mosaico--2 { grid-template-columns:2fr 1fr; }
-  .fx-mosaico--2 .fx-mosaico__item:not(.fx-mosaico__item--grande) { grid-row:1 / span 2; }
-  .fx-mosaico--3 { grid-template-columns:2fr 1fr; }
-  .fx-mosaico--4 { grid-template-columns:2fr 1fr 1fr; }
-  .fx-mosaico--4 .fx-mosaico__item:nth-child(4) { grid-column:2 / span 2; }
-  .fx-mosaico__mais { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(13,17,27,.55);
-                      color:#fff; font-weight:700; font-size:16px; }
-  .fx-credito { position:absolute; left:8px; bottom:8px; background:rgba(13,17,27,.6); color:#fff; font-size:10.5px;
-                padding:2px 7px; border-radius:6px; pointer-events:none; }
+  /* ── capa (ajustes sobre o .hero da home) ── */
+  .fx-hero { align-items:flex-end; }
+  .fx-hero--sem-foto { background:radial-gradient(120% 90% at 20% 0%, #4a0b17 0%, var(--ink) 62%); }
+  .fx-hero__scrim { background:linear-gradient(180deg, rgba(13,17,27,.55) 0%, rgba(13,17,27,.12) 30%, rgba(13,17,27,.55) 62%, rgba(13,17,27,.9) 100%); }
+  .fx-hero .hero__content { --hero-shift:0px; padding-bottom:clamp(110px,15vh,150px); }
+  .fx-trilha { font-size:13px; color:rgba(255,255,255,.72); margin:0 0 18px; }
+  .fx-trilha a { color:rgba(255,255,255,.9); text-decoration:underline; text-underline-offset:3px; text-decoration-color:rgba(255,255,255,.35); }
+  .fx-trilha a:hover { text-decoration-color:#fff; }
+  .fx-titulo { font-size:clamp(2.8rem,7.4vw,6.4rem); line-height:1.04; max-width:15ch; text-wrap:balance; padding-top:.06em; margin-bottom:16px; }
+  .fx-linha { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; margin:0 0 4px; font-size:clamp(.98rem,1.2vw,1.08rem); }
+  .fx-linha__pos { font-weight:600; text-decoration:underline; text-underline-offset:5px; text-decoration-thickness:1px;
+    text-decoration-color:rgba(255,255,255,.5); transition:text-decoration-color .3s var(--ease); }
+  .fx-linha__pos:hover { text-decoration-color:#fff; }
+  .fx-linha__sep { width:1px; height:16px; background:rgba(255,255,255,.4); }
+  .fx-preco { font-weight:700; letter-spacing:.06em; }
+  .fx-preco__off { opacity:.38; }
+  .fx-sub { font-style:italic; margin-top:14px; }
+  .fx-meta { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:22px; }
+  .fx-selo { display:inline-flex; align-items:center; gap:9px; background:#fff; color:var(--ink); border-radius:999px; padding:5px 16px 5px 5px;
+    font-size:.88rem; font-weight:700; transition:transform .35s var(--ease), box-shadow .35s var(--ease); }
+  .fx-selo:hover { transform:translateY(-2px); box-shadow:0 14px 30px -12px rgba(0,0,0,.55); }
+  .fx-selo strong { background:var(--red); color:#fff; border-radius:999px; padding:5px 12px 3px; font-family:var(--font-disp); font-weight:400; font-size:1.25rem; line-height:1.1; }
+  .fx-vidro { display:inline-flex; align-items:center; border-radius:999px; padding:9px 15px; font-size:.84rem; font-weight:600; color:#fff;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    transition:background .3s var(--ease); }
+  a.fx-vidro:hover { background:rgba(255,255,255,.3); }
+  .fx-acoes { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+  .fx-hero__credito { position:absolute; right:var(--pad); bottom:clamp(64px,9vh,90px); z-index:2; background:rgba(13,17,27,.5); color:#fff;
+    font-size:10.5px; padding:3px 9px; border-radius:999px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 
-  .fx-abas { position:sticky; top:0; z-index:5; background:rgba(255,255,255,.96); backdrop-filter:blur(8px);
-             border-bottom:1px solid #EEEEF1; margin-top:22px; }
-  .fx-abas__in { max-width:1180px; margin:0 auto; padding:0 24px; display:flex; gap:26px; overflow-x:auto; scrollbar-width:none; }
+
+  /* ── abas: pílula de vidro presa logo abaixo da barra da home ── */
+  .fx-abas { position:sticky; top:84px; z-index:40; display:flex; justify-content:center; padding:44px var(--pad) 0; pointer-events:none; }
+  .fx-abas__in { pointer-events:auto; position:relative; display:flex; gap:4px; max-width:100%; overflow-x:auto; scrollbar-width:none;
+    padding:6px; border-radius:999px; background:rgba(255,255,255,.78); backdrop-filter:blur(20px) saturate(170%); -webkit-backdrop-filter:blur(20px) saturate(170%);
+    box-shadow:0 10px 34px -20px rgba(13,17,27,.35), inset 0 0 0 1px rgba(13,17,27,.06); }
   .fx-abas__in::-webkit-scrollbar { display:none; }
-  .fx-abas a { flex:none; padding:15px 0 13px; font-size:15px; font-weight:600; color:var(--muted); text-decoration:none;
-               border-bottom:3px solid transparent; }
-  .fx-abas a:hover, .fx-abas a.ativo { color:var(--red); border-bottom-color:var(--red); }
+  .fx-abas a { position:relative; z-index:1; flex:none; padding:10px 18px; border-radius:999px; font-size:.92rem; font-weight:600; color:var(--muted);
+    transition:color .4s var(--ease); }
+  .fx-abas a:hover { color:var(--ink); }
+  .fx-abas a.ativo { color:#fff; }
+  .fx-abas__barra { position:absolute; left:0; top:6px; bottom:6px; width:0; border-radius:999px; background:var(--red);
+    box-shadow:0 8px 20px -10px rgba(227,15,47,.8); transition:transform .6s var(--ease), width .6s var(--ease); }
 
-  .fx-grade { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:48px; align-items:start; padding-top:8px; }
+  /* ── grade ── */
+  .fx-grade { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:clamp(40px,5vw,72px); align-items:start; }
   .fx-col { min-width:0; }
-  .fx-sec { padding:30px 0 6px; scroll-margin-top:64px; }
-  .fx-sec + .fx-sec { border-top:1px solid #F1F1F3; }
-  .fx-h2 { font-family:'Anton SC',sans-serif; font-weight:400; text-transform:uppercase; font-size:24px; line-height:1.2;
-           padding-top:.05em; margin:0 0 16px; }
-  .fx-h3 { font-size:16px; font-weight:700; margin:22px 0 8px; }
-  .fx-p, .fx-col p { color:var(--muted); font-size:15.5px; line-height:1.65; margin:0; }
-  .fx-muted { color:var(--muted); font-size:14px; }
-  .fx-col .resumo { background:#F6F6F8; border-radius:16px; padding:18px 20px; margin:0 0 6px; }
-  .fx-col .resumo h2 { font-family:'Anton SC',sans-serif; font-weight:400; text-transform:uppercase; font-size:15px;
-                       letter-spacing:.03em; color:var(--red); margin:0 0 6px; }
-  .fx-col .resumo p { color:var(--ink); font-size:15px; }
-  .fx-take { border-left:3px solid var(--red); padding:2px 0 2px 16px; margin-top:22px; }
-  .fx-take__eye { font-size:12px; font-weight:700; color:var(--red); text-transform:uppercase; letter-spacing:.06em; }
-  .fx-take .fx-h3 { margin-top:4px; }
-  .fx-lista { margin:0; padding-left:20px; color:var(--muted); font-size:15.5px; line-height:1.6; }
-  .fx-lista li { margin-bottom:6px; }
-  .fx-lista--check { list-style:none; padding:0; }
-  .fx-lista--check li { position:relative; padding-left:28px; }
-  .fx-lista--check li::before { content:""; position:absolute; left:0; top:4px; width:18px; height:18px; border-radius:50%;
-    background:var(--red) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center/12px no-repeat; }
+  .fx-sec { padding:clamp(48px,6vw,72px) 0 8px; scroll-margin-top:160px; }
+  .fx-sec + .fx-sec { border-top:1px solid var(--line); }
+  .fx-h2 { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(2rem,3.6vw,3rem); line-height:1.08;
+    letter-spacing:.012em; color:var(--ink); margin:0 0 clamp(18px,2vw,26px); }
+  .fx-h3 { font-size:1.05rem; font-weight:700; margin:32px 0 12px; }
+  .fx-p, .fx-col p { color:var(--muted); font-size:1rem; line-height:1.7; margin:0; }
+  .fx-sec__acao { margin-top:26px; }
 
-  .fx-pratos { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
-  .fx-prato { border:1px solid #EEEEF1; border-radius:16px; overflow:hidden; background:#fff; }
-  .fx-prato img { width:100%; aspect-ratio:4/3; object-fit:cover; background:#EEE; }
-  .fx-prato__txt { padding:12px 14px 14px; }
-  .fx-prato__n { display:inline-block; font-family:'Anton SC',sans-serif; color:var(--red); font-size:15px; margin-bottom:2px; }
-  .fx-prato h3 { font-size:15.5px; margin:0 0 4px; }
-  .fx-prato p { font-size:13.5px !important; line-height:1.5 !important; }
-  .fx-prato--sem-foto { background:#F6F6F8; border-color:transparent; }
+  .fx-resumo { background:var(--pink); border-radius:24px; padding:22px 24px; }
+  .fx-resumo h2 { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1rem; letter-spacing:.04em; color:var(--red); margin:0 0 8px; }
+  .fx-resumo p { color:var(--ink) !important; }
+  .fx-take { position:relative; margin-top:28px; padding:28px 28px 28px 30px; border-radius:24px; background:var(--ink); color:#fff; overflow:hidden; }
+  .fx-take__aspas { position:absolute; right:22px; top:-34px; font-family:var(--font-disp); font-size:190px; line-height:1; color:var(--red); }
+  .fx-take__olho { color:#FF6B7F; }
+  .fx-take__t { position:relative; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(1.4rem,2.2vw,1.8rem); line-height:1.12;
+    margin:0 0 12px; max-width:85%; }
+  .fx-take p { position:relative; color:rgba(255,255,255,.82) !important; }
+  .fx-check { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .fx-check .chip { white-space:normal; align-items:flex-start; line-height:1.55; transition:transform .4s var(--ease), background .4s var(--ease); }
+  .fx-check .chip:hover { transform:translateX(6px); background:var(--pink); }
+  .fx-check .chip__ic svg { width:22px; height:22px; }
+  .fx-bom { margin:0; padding:0; list-style:none; display:grid; gap:8px; }
+  .fx-bom li { position:relative; padding-left:22px; color:var(--muted); line-height:1.6; }
+  .fx-bom li::before { content:""; position:absolute; left:4px; top:10px; width:7px; height:7px; border-radius:50%; background:var(--red); }
 
-  .fx-aval { display:flex; align-items:center; gap:18px; background:#FBE9EC; border-radius:18px; padding:18px 20px; }
-  .fx-nota-grande { flex:none; width:92px; height:92px; border-radius:20px; background:var(--red); color:#fff; display:flex;
-                    flex-direction:column; align-items:center; justify-content:center; }
-  .fx-nota-grande strong { font-family:'Anton SC',sans-serif; font-weight:400; font-size:38px; line-height:1; padding-top:4px; }
-  .fx-nota-grande span { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-top:2px; }
-  .fx-nota-legenda { font-weight:700; color:var(--ink) !important; margin:0 0 2px !important; }
-  .fx-citacao { margin:0 0 18px; padding:14px 18px; border-radius:14px; background:#F6F6F8; color:var(--muted);
-                font-size:15px; line-height:1.6; }
+  /* escalonamento dos filhos quando o bloco entra (o .is-in é do js/sello.js) */
+  [data-reveal] .fx-prato, [data-reveal] .fx-bento__item, [data-reveal] .fx-check .chip {
+    opacity:0; transform:translateY(22px) scale(.97);
+    transition:opacity .7s var(--ease), transform .7s var(--ease), background .4s var(--ease), box-shadow .5s var(--ease);
+    transition-delay:calc(var(--i,0) * 80ms + 120ms); }
+  [data-reveal].is-in .fx-prato, [data-reveal].is-in .fx-bento__item, [data-reveal].is-in .fx-check .chip { opacity:1; transform:none; }
+  [data-reveal].is-in .fx-prato:hover { transform:translateY(-6px); transition-delay:0s; }
+  [data-reveal].is-in .fx-check .chip:hover { transform:translateX(6px); transition-delay:0s; }
 
-  .fx-galeria { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
-  .fx-galeria figure { position:relative; margin:0; border-radius:12px; overflow:hidden; aspect-ratio:1; background:#EEE; }
-  .fx-galeria img { width:100%; height:100%; object-fit:cover; }
+  /* pratos */
+  .fx-pratos { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  .fx-prato { border-radius:22px; overflow:hidden; background:#fff; box-shadow:0 0 0 1px var(--line); }
+  .fx-prato:hover { box-shadow:0 26px 50px -26px rgba(13,17,27,.45), 0 0 0 1px var(--line); }
+  .fx-prato__media { position:relative; aspect-ratio:4/3; overflow:hidden; background:var(--light); }
+  .fx-prato__media img { width:100%; height:100%; object-fit:cover; transition:transform 1s var(--ease); }
+  .fx-prato:hover .fx-prato__media img { transform:scale(1.08); }
+  .fx-prato__n { position:absolute; left:12px; top:12px; min-width:34px; height:34px; border-radius:999px; background:var(--red); color:#fff;
+    display:grid; place-items:center; font-family:var(--font-disp); font-size:1.05rem; padding-top:2px; box-shadow:0 8px 18px -8px rgba(227,15,47,.8); }
+  .fx-prato--sem-foto .fx-prato__media { aspect-ratio:auto; height:58px; background:var(--pink); }
+  .fx-prato__txt { padding:16px 18px 18px; }
+  .fx-prato h3 { font-size:1rem; margin:0 0 6px; }
+  .fx-prato p { font-size:.88rem !important; line-height:1.55 !important; }
 
-  .fx-horas { width:100%; max-width:520px; border-collapse:collapse; font-size:15px; }
-  .fx-horas th { text-align:left; font-weight:600; padding:9px 12px 9px 0; width:40%; }
-  .fx-horas td { color:var(--muted); padding:9px 0; }
-  .fx-horas tr + tr th, .fx-horas tr + tr td { border-top:1px solid #F1F1F3; }
-  .fx-horas tr.hoje th, .fx-horas tr.hoje td { color:var(--red); font-weight:700; }
-  .fx-nota-rodape { margin-top:10px !important; font-size:13px !important; }
+  /* avaliações */
+  .fx-aval { display:grid; grid-template-columns:250px 1fr; gap:16px; }
+  .fx-nota { border-radius:24px; background:var(--red); color:#fff; padding:24px; display:flex; flex-direction:column; }
+  .fx-nota--vazia { background:var(--light); color:var(--ink); }
+  .fx-nota__n { display:flex; align-items:baseline; gap:6px; }
+  .fx-nota__n strong { font-family:var(--font-disp); font-weight:400; font-size:4.6rem; line-height:1; }
+  .fx-nota__n span { font-size:.88rem; font-weight:700; opacity:.85; }
+  .fx-nota__l { color:inherit !important; font-weight:700; margin-top:10px !important; }
+  .fx-nota__s { color:inherit !important; opacity:.85; font-size:.86rem !important; line-height:1.5 !important; }
+  .fx-nota__barra { margin-top:auto; padding-top:18px; }
+  .fx-nota__barra i { display:block; height:6px; border-radius:6px; background:rgba(255,255,255,.28); position:relative; overflow:hidden; }
+  .fx-nota__barra i::after { content:""; position:absolute; inset:0; background:#fff; border-radius:6px; transform-origin:left; transform:scaleX(0);
+    transition:transform 1.4s var(--ease) .3s; }
+  [data-reveal].is-in .fx-nota__barra i::after { transform:scaleX(var(--v)); }
+  .fx-dizem { position:relative; margin:0; border-radius:24px; background:var(--light); padding:28px 28px 24px; overflow:hidden; }
+  .fx-dizem__aspas { position:absolute; left:16px; top:-26px; font-family:var(--font-disp); font-size:140px; color:var(--red); opacity:.14; line-height:1; }
+  .fx-dizem blockquote { position:relative; margin:0; line-height:1.7; color:var(--ink); }
+  .fx-dizem figcaption { margin-top:14px; font-size:.82rem; font-weight:700; color:var(--red); }
 
-  .fx-mapa { width:100%; height:280px; border:0; border-radius:16px; background:#EEE; display:block; }
-  .fx-endereco { color:var(--ink) !important; font-weight:600; margin:14px 0 8px !important; }
+  /* fotos */
+  .fx-bento { display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:150px; gap:10px; }
+  .fx-bento__item { position:relative; padding:0; border:0; cursor:zoom-in; border-radius:18px; overflow:hidden; background:var(--light); }
+  .fx-bento__item:first-child { grid-column:span 2; grid-row:span 2; }
+  .fx-bento__item img { width:100%; height:100%; object-fit:cover; transition:transform 1s var(--ease); }
+  .fx-bento__item:hover img { transform:scale(1.08); }
+  .fx-bento__mais { position:absolute; inset:0; z-index:1; display:grid; place-items:center; background:rgba(13,17,27,.55); color:#fff;
+    font-family:var(--font-disp); font-size:2rem; }
+  .fx-credito { position:absolute; z-index:1; left:10px; bottom:10px; background:rgba(13,17,27,.55); color:#fff; font-size:10.5px; padding:3px 9px;
+    border-radius:999px; pointer-events:none; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 
-  .fx-pilulas { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
-  .fx-pilulas a { display:inline-block; background:#F3F3F5; border-radius:999px; padding:9px 15px; font-size:14px;
-                  font-weight:600; color:var(--ink); text-decoration:none; }
-  .fx-pilulas a:hover { background:#FBE9EC; color:var(--red); }
+  /* horário */
+  .fx-horas { list-style:none; margin:0; padding:0; max-width:560px; display:grid; gap:4px; }
+  .fx-horas li { display:flex; justify-content:space-between; gap:16px; padding:12px 16px; border-radius:14px; transition:background .3s var(--ease); }
+  .fx-horas li:hover { background:var(--light); }
+  .fx-horas__d { font-weight:600; }
+  .fx-horas__v { color:var(--muted); text-align:right; }
+  .fx-horas li.hoje { background:var(--pink); }
+  .fx-horas li.hoje .fx-horas__d, .fx-horas li.hoje .fx-horas__v { color:var(--red); font-weight:700; }
+  .fx-horas li.hoje .fx-horas__d::after { content:"Hoje"; margin-left:10px; font-size:11px; color:#fff; background:var(--red); border-radius:999px;
+    padding:2px 8px; vertical-align:2px; }
+  .fx-rodape-sec { margin-top:14px !important; font-size:.82rem !important; }
 
-  .fx-lado { position:sticky; top:72px; padding-top:30px; }
-  .fx-cartao { border:1px solid #EEEEF1; border-radius:20px; padding:20px; box-shadow:0 10px 30px rgba(13,17,27,.06);
-               display:flex; flex-direction:column; gap:12px; }
-  .fx-agora { display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; }
-  .fx-agora__ponto { width:9px; height:9px; border-radius:50%; background:#C9CCD3; }
-  .fx-agora.aberto .fx-agora__ponto { background:#1F9D55; box-shadow:0 0 0 4px rgba(31,157,85,.15); }
+  /* mapa */
+  .fx-mapa { position:relative; border-radius:24px; overflow:hidden; background:var(--light); box-shadow:0 0 0 1px var(--line); }
+  .fx-mapa iframe { display:block; width:100%; height:340px; border:0; }
+  .fx-mapa__card { position:absolute; left:14px; bottom:14px; right:14px; max-width:460px; display:flex; gap:10px; align-items:flex-start;
+    background:rgba(255,255,255,.95); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-radius:16px; padding:12px 14px;
+    font-size:.88rem; font-weight:600; box-shadow:0 12px 30px -16px rgba(13,17,27,.45); }
+  .fx-mapa__card .fx-ic { color:var(--red); }
+  .fx-endereco { color:var(--ink) !important; font-weight:600; }
+  .fx-chegar { list-style:none; padding:0; margin:16px 0 0; display:grid; gap:8px; }
+  .fx-chegar li { display:flex; gap:10px; align-items:center; color:var(--muted); }
+  .fx-chegar .fx-ic { width:18px; height:18px; color:var(--red); }
+
+  /* guias e pílulas (peças da home, só ajustes) */
+  .fx-guias { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+  .fx-xb { gap:8px; }
+  .fx-xb b { font-family:var(--font-disp); font-weight:400; color:var(--red); }
+
+  /* coluna lateral */
+  .fx-lado { position:sticky; top:170px; padding-top:clamp(48px,6vw,72px); }
+  .fx-cartao { border-radius:28px; padding:22px; background:#fff; box-shadow:0 30px 60px -34px rgba(13,17,27,.35), 0 0 0 1px var(--line); }
+  .fx-agora { display:flex; align-items:center; gap:10px; font-size:.95rem; padding:12px 14px; border-radius:16px; background:var(--light); margin-bottom:6px; }
+  .fx-agora b { font-weight:700; }
+  .fx-agora__ponto { position:relative; width:10px; height:10px; border-radius:50%; background:#C9CCD3; flex:none; }
+  .fx-agora.aberto { background:#E9F7EF; }
+  .fx-agora.aberto b { color:#1F9D55; }
+  .fx-agora.aberto .fx-agora__ponto { background:#1F9D55; }
+  .fx-agora.aberto .fx-agora__ponto::after { content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid #1F9D55; animation:fxPulso 1.8s var(--ease) infinite; }
+  .fx-agora.fechado { background:var(--pink); }
+  .fx-agora.fechado b { color:var(--red); }
   .fx-agora.fechado .fx-agora__ponto { background:var(--red); }
-  .fx-info { display:flex; flex-direction:column; gap:1px; font-size:14.5px; border-top:1px solid #F1F1F3; padding-top:10px; }
-  .fx-info__r { font-size:12px; color:#9AA0A8; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
-  .fx-info a { color:var(--ink); font-weight:600; text-decoration:none; word-break:break-word; }
-  .fx-info a:hover { color:var(--red); }
-  .fx-btn { display:block; text-align:center; text-decoration:none; border-radius:14px; padding:13px 16px; font-weight:700;
-            font-size:15px; }
-  .fx-btn--primario { background:var(--red); color:#fff; margin-top:4px; }
-  .fx-btn--primario:hover { background:#C20B27; }
-  .fx-btn--contorno { border:1.5px solid #E4E4E7; color:var(--ink); background:#fff; }
-  .fx-btn--contorno:hover { border-color:var(--red); color:var(--red); }
-  .fx-sec > .fx-btn--contorno { display:inline-block; margin-top:14px; }
-  .fx-lojas { display:flex; gap:8px; }
-  .fx-lojas .fx-btn { flex:1; padding:11px 8px; font-size:14px; }
-  .fx-rodape { border-top:1px solid #EEEEF1; margin-top:56px; padding:26px 24px 40px; text-align:center; font-size:14px; }
-  .fx-rodape a { color:var(--muted); margin:0 10px; text-decoration:none; }
+  @keyframes fxPulso { from { transform:scale(.6); opacity:1; } to { transform:scale(1.8); opacity:0; } }
+  .fx-info { display:flex; gap:12px; align-items:flex-start; padding:13px 6px; border-bottom:1px solid var(--line); font-size:.94rem; }
+  .fx-info .fx-ic { margin-top:2px; color:var(--red); }
+  .fx-info__r { display:block; font-size:.72rem; color:#9AA0A8; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+  .fx-info a { color:var(--ink); font-weight:600; word-break:break-word; background:linear-gradient(var(--red),var(--red)) 0 100%/0 1.5px no-repeat;
+    transition:background-size .45s var(--ease), color .3s var(--ease); }
+  .fx-info a:hover { color:var(--red); background-size:100% 1.5px; }
+  .fx-cartao__cta { padding-top:18px; display:grid; gap:12px; }
+  .fx-btn-bloco { width:100%; }
+  .fx-lojas { display:flex; justify-content:center; gap:18px; font-size:.84rem; font-weight:600; }
+  .fx-lojas a { color:var(--muted); transition:color .3s var(--ease); }
+  .fx-lojas a:hover { color:var(--red); }
 
+  /* barra do app (celular) */
+  .fx-barra-app { display:none; }
+  @media (max-width:900px) {
+    .fx-barra-app { position:fixed; z-index:90; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:12px;
+      padding:10px 10px 10px 12px; border-radius:22px; background:rgba(13,17,27,.92); color:#fff; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+      box-shadow:0 20px 40px -18px rgba(0,0,0,.6); transform:translateY(150%); transition:transform .6s var(--ease); }
+    .fx-barra-app.visivel { transform:none; }
+    .fx-barra-app__selo { flex:none; width:38px; height:38px; border-radius:12px; background:#fff url(/assets/img/seal.svg) center/26px no-repeat; }
+    .fx-barra-app p { margin:0; flex:1; min-width:0; line-height:1.25; }
+    .fx-barra-app strong { display:block; font-size:.88rem; }
+    .fx-barra-app p span { display:block; font-size:.75rem; color:rgba(255,255,255,.65); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .fx-barra-app__abrir { flex:none; background:var(--red); color:#fff; font-weight:700; font-size:.88rem; border-radius:999px; padding:10px 16px; }
+    .fx-barra-app__x { flex:none; width:30px; height:30px; border:0; background:transparent; color:rgba(255,255,255,.6); padding:5px; }
+  }
+
+  /* visualizador */
+  .fx-lb { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(8,10,16,.94);
+    opacity:0; transition:opacity .35s var(--ease); }
+  .fx-lb[hidden] { display:none; }
+  .fx-lb.aberto { opacity:1; }
+  .fx-lb__fig { margin:0; max-width:min(92vw,1200px); text-align:center; }
+  .fx-lb__fig img { max-width:100%; max-height:82vh; border-radius:18px; display:block; margin:0 auto; }
+  .fx-lb.troca .fx-lb__fig img { animation:fxEntra .55s var(--ease); }
+  @keyframes fxEntra { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:none; } }
+  .fx-lb__fig figcaption { color:rgba(255,255,255,.6); font-size:12.5px; margin-top:10px; }
+  .fx-lb button { border:0; background:rgba(255,255,255,.1); color:#fff; border-radius:50%; width:48px; height:48px; display:grid; place-items:center;
+    cursor:pointer; transition:background .3s var(--ease), transform .3s var(--ease); }
+  .fx-lb button:hover { background:rgba(255,255,255,.22); transform:scale(1.06); }
+  .fx-lb__x { position:absolute; top:18px; right:18px; }
+  .fx-lb__nav { position:absolute; top:50%; margin-top:-24px; }
+  .fx-lb__nav--esq { left:18px; } .fx-lb__nav--dir { right:18px; }
+  .fx-lb__cont { position:absolute; top:30px; left:0; right:0; text-align:center; color:rgba(255,255,255,.7); font-size:13px; font-weight:600; pointer-events:none; }
+
+  @media (max-width:1060px) { .fx-grade { grid-template-columns:minmax(0,1fr) 320px; } }
   @media (max-width:900px) {
     .fx-grade { grid-template-columns:1fr; gap:0; }
-    .fx-lado { position:static; padding-top:22px; order:-1; }
-    .fx-barra nav { display:none; }
+    .fx-lado { position:static; order:-1; }
+    .fx-aval { grid-template-columns:1fr; }
+    .fx-abas { top:76px; padding-top:40px; justify-content:flex-start; }
   }
   @media (max-width:640px) {
-    .fx-wrap, .fx-abas__in, .fx-barra__in { padding-left:16px; padding-right:16px; }
-    .fx-mosaico { display:flex; height:auto; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; border-radius:0;
-                  margin:0 -16px; padding:0 16px; scrollbar-width:none; }
-    .fx-mosaico::-webkit-scrollbar { display:none; }
-    .fx-mosaico__item { flex:0 0 86%; aspect-ratio:4/3; border-radius:16px; scroll-snap-align:center; }
-    .fx-mosaico__item--grande { grid-row:auto; }
-    .fx-mosaico__mais { display:none; }
-    .fx-abas { margin-top:16px; }
-    .fx-aval { flex-direction:column; align-items:flex-start; }
+    .fx-titulo { font-size:clamp(2.5rem,12vw,3.4rem); }
+    .fx-acoes .btn { flex:1 1 100%; }
+    .fx-hero__credito { bottom:auto; top:96px; }
+    .fx-bento { grid-template-columns:repeat(2,1fr); grid-auto-rows:130px; }
+    .fx-take__aspas { font-size:130px; top:-20px; }
+    .fx-lb__nav { display:none !important; }
+    .fx-abas { padding-inline:12px; }
+    .fx-linha { flex-direction:column; align-items:flex-start; gap:4px; }
+    .fx-linha__sep { display:none; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    [data-reveal] .fx-prato, [data-reveal] .fx-bento__item, [data-reveal] .fx-check .chip { opacity:1 !important; transform:none !important; transition:none !important; }
+    .fx-nota__barra i::after { transform:scaleX(var(--v)) !important; transition:none !important; }
+    .fx-agora.aberto .fx-agora__ponto::after { animation:none; }
   }
 `;

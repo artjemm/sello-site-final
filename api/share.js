@@ -20,7 +20,7 @@ import { cartao, CSS_CARTAO } from './cartao.js';
 import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 import { notasComunidade, fmtNota } from './notas.js';
-import { layoutRestaurante, CSS_FICHA, JS_FICHA, foto } from './ficha.js';
+import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './ficha.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -457,13 +457,16 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
     trilhaHtml: '<nav class="trilha" aria-label="Você está em">' + trilhaFicha.map((t, i, a) =>
       i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url) + '">' + esc(t.name) + '</a>',
     ).join(' <span aria-hidden="true">›</span> ') + '</nav>',
-    vizinhosHtml: (viz.vizinhos || []).length
-      ? '<ul class="fx-pilulas">' + viz.vizinhos.map((v) => {
-          const vn = notas.get(v.slug);
-          return '<li><a href="/r/' + esc(v.share_slug || v.slug) + '">' + esc(v.name) + (vn ? ' · ' + esc(fmtNota(vn.media)) : '') + '</a></li>';
-        }).join('') + '</ul>'
-      : '',
-    explorar: explorar.match(/<li>.*?<\/li>/g) || [],
+    vizinhos: (viz.vizinhos || []).map((v) => {
+      const vn = notas.get(v.slug);
+      return { href: '/r/' + (v.share_slug || v.slug), txt: v.name, nota: vn ? fmtNota(vn.media) : '' };
+    }),
+    explorar: [
+      viz.paginaBairro ? { href: viz.paginaBairro, txt: 'Onde comer em ' + bairro } : null,
+      ...(viz.ocasioes || []),
+      viz.paginaCozinha && viz.pluralCozinha ? { href: viz.paginaCozinha, txt: 'Mais ' + viz.pluralCozinha } : null,
+      { href: '/guias', txt: 'Todos os guias do Sello' },
+    ].filter(Boolean),
   });
 
   const body = [
@@ -706,45 +709,9 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
   };
 }
 
-function page(data, canonical) {
-  const img = data.image || OG_FALLBACK;
-  const lds = (Array.isArray(data.jsonld) ? data.jsonld : [data.jsonld]).filter(Boolean);
-  // Trilha visível. O último degrau é a própria página: texto, não link.
-  const trilha = (data.trilha || []).length > 1
-    ? '<nav class="trilha" aria-label="Você está em">' +
-      data.trilha.map((t, i, a) =>
-        i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url.replace(SITE, '') || '/') + '">' + esc(t.name) + '</a>',
-      ).join(' <span aria-hidden="true">›</span> ') +
-      '</nav>'
-    : '';
-  return `<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(data.title)}</title>
-<meta name="description" content="${esc(data.description)}" />
-<link rel="canonical" href="${esc(canonical)}" />
-${data.noindex ? '<meta name="robots" content="noindex, follow" />' : ''}
-<meta name="apple-itunes-app" content="app-id=${APP_STORE_ID}, app-argument=${esc(canonical)}" />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="Sello" />
-<meta property="og:locale" content="pt_BR" />
-<meta property="og:url" content="${esc(canonical)}" />
-<meta property="og:title" content="${esc(data.title)}" />
-<meta property="og:description" content="${esc(data.description)}" />
-<meta property="og:image" content="${esc(img)}" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${esc(data.title)}" />
-<meta name="twitter:description" content="${esc(data.description)}" />
-<meta name="twitter:image" content="${esc(img)}" />
-${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>').join('\n')}
-<link rel="icon" href="/favicon.svg" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Anton+SC&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
-<style>
-  :root { --red:#E30F2F; --ink:#0D111B; --muted:#4D5461; }
+/* Estilo das páginas que NÃO são a ficha nova (cartão de compartilhamento,
+ * guias, listas, perfis). A ficha usa o css/sello.css da home + CSS_FICHA. */
+const CSS_PAGINA = `  :root { --red:#E30F2F; --ink:#0D111B; --muted:#4D5461; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:'Open Sans',system-ui,sans-serif; color:var(--ink);
          background:#fff; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; }
@@ -794,19 +761,54 @@ ${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).rep
   ul.links { list-style:none; padding:0; }
   ul.links li { padding:6px 0; }
   ul.links a { color:var(--ink); font-weight:600; }
-${CSS_CARTAO}
-${data.main ? CSS_FICHA : ''}
-</style>
-${data.main && data.image ? '<link rel="preload" as="image" href="' + esc(foto(data.image, 1200)) + '" fetchpriority="high" />' : ''}
+`;
+
+function page(data, canonical) {
+  const img = data.image || OG_FALLBACK;
+  const lds = (Array.isArray(data.jsonld) ? data.jsonld : [data.jsonld]).filter(Boolean);
+  // Trilha visível. O último degrau é a própria página: texto, não link.
+  const trilha = (data.trilha || []).length > 1
+    ? '<nav class="trilha" aria-label="Você está em">' +
+      data.trilha.map((t, i, a) =>
+        i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url.replace(SITE, '') || '/') + '">' + esc(t.name) + '</a>',
+      ).join(' <span aria-hidden="true">›</span> ') +
+      '</nav>'
+    : '';
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${esc(data.title)}</title>
+<meta name="description" content="${esc(data.description)}" />
+<link rel="canonical" href="${esc(canonical)}" />
+${data.noindex ? '<meta name="robots" content="noindex, follow" />' : ''}
+<meta name="apple-itunes-app" content="app-id=${APP_STORE_ID}, app-argument=${esc(canonical)}" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Sello" />
+<meta property="og:locale" content="pt_BR" />
+<meta property="og:url" content="${esc(canonical)}" />
+<meta property="og:title" content="${esc(data.title)}" />
+<meta property="og:description" content="${esc(data.description)}" />
+<meta property="og:image" content="${esc(img)}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${esc(data.title)}" />
+<meta name="twitter:description" content="${esc(data.description)}" />
+<meta name="twitter:image" content="${esc(img)}" />
+${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).replace(/</g, '\\u003c') + '</script>').join('\n')}
+<link rel="icon" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton+SC&family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+${data.main
+  ? '<link rel="stylesheet" href="' + ASSETS_HOME.css + '" />\n<style>' + CSS_FICHA + '</style>\n' +
+    (data.image ? '<link rel="preload" as="image" imagesrcset="' + esc(srcsetCapa(data.image)) + '" imagesizes="100vw" fetchpriority="high" />' : '')
+  : '<style>' + CSS_PAGINA + CSS_CARTAO + '</style>'}
 </head>
-${data.main ? `<body class="rest">
-  <header class="fx-barra"><div class="fx-barra__in">
-    <a class="fx-logo" href="/" aria-label="Sello — início">SELLO</a>
-    <nav aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>
-    <a class="fx-btn fx-btn--primario" href="/baixar">Baixar o app</a>
-  </div></header>
-  ${data.main}
-  <footer class="fx-rodape"><a href="/">Início</a><a href="/guias">Guias</a><a href="/sobre">Sobre o Sello</a><a href="/baixar">Baixar o app</a></footer>
+${data.main ? `<body>
+${data.main}
+<script src="${ASSETS_HOME.lenis}" defer></script>
+<script src="${ASSETS_HOME.js}" defer></script>
 <script>${JS_FICHA}</script>` : `<body class="${data.body ? 'ficha' : ''}">
   <main class="card">
     <img class="cover" src="${esc(img)}" alt="${esc(data.imageAlt || '')}" onerror="this.src='${esc(OG_FALLBACK)}'" />
@@ -838,8 +840,12 @@ ${data.main ? `<body class="rest">
   // O mesmo vale para quem chega de um assistente de IA (ChatGPT, Perplexity,
   // Gemini, Copilot, Claude): veio ler. E só tenta no celular — no computador
   // não existe app para abrir, e o navegador mostra erro de esquema.
-  var origem = (document.referrer || '').replace(/^https?:\/\//, '').split('/')[0];
-  var veioLer = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|brave|chatgpt|openai|perplexity|gemini|copilot|claude|you)\./i.test(origem);
+  // ATENÇÃO: isto mora dentro de uma template string do servidor. Barra
+  // invertida de regex vai DOBRADA aqui, senão a template come a barra, o "//"
+  // vira comentário e o script inteiro quebra — foi assim, em silêncio, até
+  // 03/10/2026: nem este redirecionamento nem a medição abaixo rodavam.
+  var origem = (document.referrer || '').replace(/^https?:\\/\\//, '').split('/')[0];
+  var veioLer = /(^|\\.)(google|bing|duckduckgo|yahoo|ecosia|brave|chatgpt|openai|perplexity|gemini|copilot|claude|you)\\./i.test(origem);
   var celular = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
   if (celular && !veioLer && !/[?&]nr=1/.test(location.search)) {
     setTimeout(function () { location.href = ${JSON.stringify(data.deepLink)}; }, 400);
@@ -873,7 +879,7 @@ ${data.main ? `<body class="rest">
     if (href.indexOf('play.google.com') > -1) { marcar('baixar_loja', { loja: 'android', pagina: pagina }); return; }
     // Intenção: quem pediu para baixar mas ainda não escolheu a loja. A
     // diferença entre os dois números é onde as pessoas desistem.
-    if (href === '#baixar' || /\/(download|baixar|app)$/.test(href)) marcar('baixar_intencao', { pagina: pagina });
+    if (href === '#baixar' || /\\/(download|baixar|app)$/.test(href)) marcar('baixar_intencao', { pagina: pagina });
     // Nas fichas, abrir no app é o equivalente da conversão.
     if (href.indexOf('sello://') === 0) marcar('abrir_no_app', { pagina: pagina });
   }, true);
