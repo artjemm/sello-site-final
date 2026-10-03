@@ -17,11 +17,11 @@
  * nasceria desatualizado.
  */
 
-import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
+import { TITULOS_DE_BUSCA } from './_lib/titulos-de-busca.js';
 import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
-} from './taxonomia.js';
-import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './ocasioes.js';
+} from './_lib/taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './_lib/ocasioes.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';

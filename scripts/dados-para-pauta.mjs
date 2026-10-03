@@ -2,7 +2,7 @@
 // Mesmo critério das páginas de ocasião (api/ocasioes.js). Só leitura, chave pública.
 // Uso: node scripts/dados-para-pauta.mjs
 
-import { atende } from '../api/ocasioes.js';
+import { atende } from '../api/_lib/ocasioes.js';
 const K = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
 const U = 'https://lshecrzhcpqqiaytkemf.supabase.co/rest/v1';
 const h = { apikey: K, Authorization: `Bearer ${K}` };

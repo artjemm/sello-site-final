@@ -15,13 +15,13 @@
  * e manter isso em quatro arquivos só multiplicaria os lugares onde corrigir.
  */
 
-import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
-import { cartao, CSS_CARTAO } from './cartao.js';
-import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
-import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
-import { notasComunidade, fmtNota } from './notas.js';
-import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './ficha.js';
-import { fontesExternas } from './avaliacoes-externas.js';
+import { TITULOS_DE_BUSCA } from './_lib/titulos-de-busca.js';
+import { cartao, CSS_CARTAO } from './_lib/cartao.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
+import { notasComunidade, fmtNota } from './_lib/notas.js';
+import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './_lib/ficha.js';
+import { fontesExternas } from './_lib/avaliacoes-externas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante

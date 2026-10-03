@@ -26,8 +26,8 @@
  *   - Guia usa `lists.updated_at`, que só se move quando o guia é editado.
  */
 
-import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
-import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';

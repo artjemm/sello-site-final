@@ -10,7 +10,7 @@
  * USO (da raiz deste repositório):
  *   node scripts/sync-tripadvisor.mjs <caminho>/sello-app-final/lib/avaliacoesExternas.ts
  *
- * Gera `api/tripadvisor.js`. Rodar de novo sempre que o app atualizar a lista.
+ * Gera `api/_lib/tripadvisor.js`. Rodar de novo sempre que o app atualizar a lista.
  */
 import fs from 'fs';
 
@@ -48,5 +48,5 @@ const saida = `/**
  */
 export const TRIPADVISOR = ${JSON.stringify(dados, null, 2)};
 `;
-fs.writeFileSync(new URL('../api/tripadvisor.js', import.meta.url), saida);
+fs.writeFileSync(new URL('../api/_lib/tripadvisor.js', import.meta.url), saida);
 console.log(`${n} restaurantes → api/tripadvisor.js`);

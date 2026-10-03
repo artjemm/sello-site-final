@@ -28,10 +28,10 @@
 
 import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
-} from './taxonomia.js';
-import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
-import { cartao, esc, cifroes, CSS_CARTAO } from './cartao.js';
-import { notasComunidade } from './notas.js';
+} from './_lib/taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
+import { cartao, esc, cifroes, CSS_CARTAO } from './_lib/cartao.js';
+import { notasComunidade } from './_lib/notas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
