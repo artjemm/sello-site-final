@@ -27,8 +27,9 @@
  */
 
 import {
-  COZINHAS, aSlug, MINIMO, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
+  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
 } from './taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 import { cartao, esc, cifroes, CSS_CARTAO } from './cartao.js';
 import { notasComunidade } from './notas.js';
 
@@ -50,9 +51,22 @@ async function sb(path) {
  *  por ele), quantos lugares cada bairro/cozinha/combinação tem — que é o que
  *  diz se a página do outro lado de um link passa do piso — e o centro de cada
  *  bairro, calculado das coordenadas dos próprios restaurantes. */
-async function indice() {
+/* O índice é o mesmo para todas as páginas e muda quando o catálogo muda —
+ * no máximo algumas vezes por dia. Guardado por 5 minutos na função quente,
+ * poupa uma consulta de ~500 linhas por página servida. */
+let indiceCache = null;
+function indice() {
+  const agora = Date.now();
+  if (indiceCache && agora - indiceCache.t < 5 * 60 * 1000) return indiceCache.p;
+  const p = montarIndice().catch((e) => { indiceCache = null; throw e; });
+  indiceCache = { t: agora, p };
+  return p;
+}
+
+async function montarIndice() {
   const rows = await sb(
-    'restaurants?is_active=eq.true&select=lat,lng,catalog_json->>neighborhood,catalog_json->>cuisine&limit=2000',
+    'restaurants?is_active=eq.true&select=slug,name,lat,lng,catalog_json->>neighborhood,catalog_json->>cuisine,' +
+      'sello:catalog_json->>sello_score,' + COLS_OCASIAO + '&limit=2000',
   );
   const bairros = new Map();
   const cozinhas = new Map();
@@ -75,7 +89,9 @@ async function indice() {
   }
   const centro = {};
   for (const [b, s] of Object.entries(soma)) centro[b] = { lat: s.lat / s.n, lng: s.lng / s.n };
-  return { bairros, cozinhas, nBairro, nCozinha, nCombo, centro };
+  // Ocasiões: a mesma conta que o sitemap e os links usam (ocasioes.js).
+  const oc = contarOcasioes(rows, MINIMO);
+  return { bairros, cozinhas, nBairro, nCozinha, nCombo, centro, oc, rows };
 }
 
 /* ── O que passa do piso. Link para página que responde 404 é pior que link
@@ -89,7 +105,7 @@ const comboOk = (idx, c, b) => (idx.nCombo[c + '|' + b] || 0) >= MINIMO.combinac
 function destinoCozinha(idx, c) {
   const t = COZINHAS[c];
   if (!t) return null;
-  if (t.guia) return '/g/' + t.guia;
+  if (destinoFixo(t)) return destinoFixo(t);
   return (idx.nCozinha[c] || 0) >= MINIMO.cozinha ? '/restaurantes/' + t.slug : null;
 }
 
@@ -154,6 +170,14 @@ function notaDe(r, notas) {
   return n ? n.media : null;
 }
 const decimal = (n) => n.toFixed(1).replace('.', ',');
+
+/** O lugar de nota mais alta, entre os que têm ao menos 3 avaliações — um
+ *  10,0 de um voto só diz quem avaliou, não o lugar. */
+function melhorAvaliado(rows, notas) {
+  return rows
+    .filter((r) => { const n = notas && notas.get ? notas.get(r.slug) : null; return n && n.votos >= 3; })
+    .sort((x, y) => notaDe(y, notas) - notaDe(x, notas))[0] || null;
+}
 
 function notaMedia(rows, mapa) {
   const notas = rows.map((r) => notaDe(r, mapa)).filter((n) => n != null);
@@ -234,6 +258,193 @@ function pagina(d) {
     '</body>\n</html>';
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Ocasiões — /ocasioes/:ocasiao e /ocasioes/:ocasiao/:bairro (ver ocasioes.js)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+const DIA_CURTO = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const POR_HORARIO = new Set(['aberto-domingo', 'aberto-ate-tarde', 'almoco', 'brunch']);
+const POR_REGISTRO = new Set(['com-criancas', 'pet-friendly', 'ao-ar-livre', 'vegetariano']);
+
+/** "0130" → "01:30". */
+const hhmm = (t) => String(t || '').padStart(4, '0').replace(/^(\d\d)(\d\d)$/, '$1:$2');
+
+/** O dado do cartão que responde à pergunta da página: na página de domingo,
+ *  o horário de domingo — e não o "de hoje", que numa terça não diz nada. */
+function destaque(slug, r) {
+  const c = r.catalog_json || {};
+  const dia = (nome) => (c.hours || []).find((h) => h && h.label === nome);
+  if (slug === 'aberto-domingo') {
+    const d = dia('Domingo');
+    return d && d.value ? { rotulo: 'Domingo', valor: d.value } : null;
+  }
+  if (slug === 'brunch') {
+    const vals = ['Sábado', 'Domingo'].map(dia).filter((d) => d && d.value && !/fechado/i.test(d.value));
+    return vals.length ? { rotulo: 'Fim de semana', valor: vals.map((d) => d.label.slice(0, 3).toLowerCase() + ' ' + d.value).join(' · ') } : null;
+  }
+  if (slug === 'aberto-ate-tarde') {
+    const tarde = (r.hours_periods || c.hours_periods || []).filter((p) => p && p.open && p.close &&
+      (p.close.day !== p.open.day || Number(p.close.time) === 0));
+    if (!tarde.length) return null;
+    // Madrugada conta como "depois": 01:00 é mais tarde que 00:00.
+    const maisTarde = tarde.map((p) => p.close.time).sort((x, y) => Number(y) - Number(x))[0];
+    const dias = [...new Set(tarde.map((p) => p.open.day))].sort((x, y) => ((x + 6) % 7) - ((y + 6) % 7));
+    return { rotulo: 'Fecha', valor: 'até ' + hhmm(maisTarde) + ' · ' + dias.map((d) => DIA_CURTO[d]).join(', ') };
+  }
+  return null;
+}
+
+/** Na página do bairro: o que as ocasiões dizem dele, em uma frase. É fato
+ *  útil para quem lê ("abre domingo?") e é a frase que um assistente cita. */
+function fatosDeOcasiao(idx, bairro) {
+  const m = idx.oc.porBairro[bairro] || {};
+  const partes = [];
+  if (m['aberto-domingo']) partes.push(m['aberto-domingo'] + ' abrem no domingo');
+  if (m['aberto-ate-tarde']) partes.push(m['aberto-ate-tarde'] + ' ficam abertos depois da meia-noite em algum dia');
+  if (m['bom-e-barato']) partes.push(m['bom-e-barato'] + ' estão nas faixas de preço $ e $$');
+  return partes.length ? 'Deles, ' + listaHumana(partes) + '.' : '';
+}
+
+async function paginaOcasiao(res, a, b, idx, linhasCidades) {
+  const slug = aSlug(a);
+  const o = OCASIOES[slug];
+  if (!o) return erro404(res);
+  const bairro = b ? idx.bairros.get(aSlug(b)) : null;
+  if (b && !bairro) return erro404(res);
+
+  // Na cidade inteira, a ocasião que um guia já disputa é do guia.
+  if (!bairro && o.guia) {
+    res.setHeader('Location', '/g/' + o.guia);
+    res.status(308).end();
+    return;
+  }
+  if (bairro ? !idx.oc.existeBairro(slug, bairro) : !idx.oc.existeGeral(slug)) return erro404(res);
+
+  /* Quem entra sai do índice leve; o catalog_json inteiro só é baixado para
+   * os que vão aparecer. A página geral de "domingo" tem ~390 lugares — 390
+   * cartões não ajudam ninguém a escolher e pesariam megabytes. */
+  const LIMITE = 60;
+  const candidatos = idx.rows
+    .filter((r) => (!bairro || r.neighborhood === bairro) && atende(slug, r))
+    .sort((x, y) => Number(y.sello || 0) - Number(x.sello || 0));
+  const total = candidatos.length;
+  const mostrar = candidatos.slice(0, LIMITE).map((r) => r.slug);
+  const [linhas, notas] = await Promise.all([
+    sb('restaurants?is_active=eq.true&slug=in.(' + mostrar.map(encodeURIComponent).join(',') + ')' +
+      '&select=' + COLS + ',hours_periods,amenities&limit=' + LIMITE),
+    notasComunidade(),
+  ]);
+  const ordem = new Map(mostrar.map((s, i) => [s, i]));
+  linhas.sort((x, y) => ordem.get(x.slug) - ordem.get(y.slug));
+  if (!linhas.length) return erro404(res);
+
+  const cidade = cidadeDasLinhas(linhas, mapaDeCidades(linhasCidades));
+  const ondeBairro = bairro ? ' em ' + bairro : '';
+  const ondeLead = bairro
+    ? ' em ' + bairro + (cidade ? ', ' + cidade.nome + ',' : '')
+    : (cidade ? ' em ' + cidade.nome : '');
+  const ufTitulo = cidade && cidade.uf ? (bairro ? ', ' : ' em ') + cidade.uf : '';
+  const naCidadeDesc = cidade ? (bairro ? ', ' : ' em ') + cidade.nome : '';
+
+  // Sem bairro, o H1 leva a cidade — vinda das linhas, nunca escrita aqui.
+  const h1 = o.titulo(bairro ? ondeBairro : (cidade ? ' em ' + cidade.nome : ''));
+  const title = o.busca(ondeBairro) + ufTitulo + ': ' + total + ' lugares | Sello';
+  const canonical = SITE + '/ocasioes/' + slug + (bairro ? '/' + aSlug(bairro) : '');
+
+  /* Os fatos falam de TODOS os que atendem, não só dos 60 mostrados — senão
+   * "bairros com mais opções" contaria só o topo da curadoria. As linhas do
+   * índice são achatadas; daí o embrulho para maisFrequentes. */
+  const todos = candidatos.map((r) => ({ ...r, catalog_json: { cuisine: r.cuisine, neighborhood: r.neighborhood } }));
+  const melhor = melhorAvaliado(candidatos, notas);
+  const contexto = bairro ? maisFrequentes(todos, 'cuisine', 3) : maisFrequentes(todos, 'neighborhood', 3);
+  const media = notaMedia(candidatos, notas);
+  const lead = frases(
+    'Na curadoria do Sello, ' + total + ' lugares' + ondeLead + ' ' + o.criterio + '.',
+    total > linhas.length
+      ? 'Aqui estão os ' + linhas.length + ' primeiros, na ordem da curadoria.'
+      : 'Estão na ordem da curadoria.',
+    contexto.length
+      ? (bairro ? 'Cozinhas mais presentes: ' : 'Bairros com mais opções: ') +
+        listaHumana(contexto.map((e) => e[0] + ' (' + e[1] + ')')) + '.'
+      : '',
+    melhor ? 'A nota mais alta da comunidade é de ' + melhor.name + ' (' + decimal(notaDe(melhor, notas)) + ').' : '',
+    media ? 'Nota média da comunidade: ' + media + '.' : '',
+    POR_HORARIO.has(slug) ? 'Horários mudam: confira na ficha de cada lugar antes de sair.' : '',
+    POR_REGISTRO.has(slug) ? 'A lista mostra onde há registro; uma casa fora dela não quer dizer que não atenda.' : '',
+  );
+  const description = o.busca(ondeBairro) + naCidadeDesc + ': ' + total +
+    ' lugares com curadoria do Sello que ' + o.criterio + '. Nota, preço e endereço de cada um.';
+
+  const trilha = migalhas(bairro
+    ? [
+        { nome: 'Início', href: '/' },
+        { nome: 'Bairros', href: '/guias#bairros' },
+        { nome: bairro, href: '/onde-comer/' + aSlug(bairro) },
+        { nome: o.nome, href: '/ocasioes/' + slug + '/' + aSlug(bairro) },
+      ]
+    : [
+        { nome: 'Início', href: '/' },
+        { nome: 'Ocasiões', href: '/guias#ocasioes' },
+        { nome: o.nome, href: '/ocasioes/' + slug },
+      ]);
+
+  /* Para onde vai quem quer esta ocasião sem recorte de bairro: a página
+   * geral, ou o guia que a substitui. */
+  const geral = o.guia ? '/g/' + o.guia : (idx.oc.existeGeral(slug) ? '/ocasioes/' + slug : '');
+  const outrosBairros = Object.keys(idx.oc.porBairro)
+    .filter((nb) => nb !== bairro && idx.oc.existeBairro(slug, nb))
+    .sort((x, y) => idx.oc.porBairro[y][slug] - idx.oc.porBairro[x][slug]);
+  const blocos = [];
+  const todosOsGuias = { href: '/guias', txt: 'Todos os guias e bairros' };
+  if (bairro) {
+    blocos.push(pilulas('Outras ocasiões em ' + bairro, Object.keys(OCASIOES)
+      .filter((x) => x !== slug && idx.oc.existeBairro(x, bairro))
+      .map((x) => ({ href: '/ocasioes/' + x + '/' + aSlug(bairro), txt: OCASIOES[x].titulo(' em ' + bairro) }))));
+    blocos.push(pilulas('Veja também', [
+      { href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo em ' + bairro },
+      geral ? { href: geral, txt: o.guia ? o.nome + ': o guia do Sello' : o.nome + (cidade ? ' em ' + cidade.nome : ', todos') } : null,
+      todosOsGuias,
+    ].filter(Boolean)));
+    blocos.push(pilulas(o.nome + ' em outros bairros', outrosBairros.slice(0, 8)
+      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' em ' + nb) }))));
+  } else {
+    blocos.push(pilulas(o.nome + ' por bairro', outrosBairros.slice(0, 12)
+      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' em ' + nb) }))));
+    blocos.push(pilulas('Outras ocasiões', [
+      ...Object.keys(OCASIOES)
+        .filter((x) => x !== slug)
+        .map((x) => {
+          const href = OCASIOES[x].guia ? '/g/' + OCASIOES[x].guia : (idx.oc.existeGeral(x) ? '/ocasioes/' + x : '');
+          return href ? { href, txt: OCASIOES[x].nome } : null;
+        })
+        .filter(Boolean),
+      todosOsGuias,
+    ]));
+  }
+
+  const jsonld = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: h1,
+    description: lead,
+    numberOfItems: linhas.length,
+    itemListElement: linhas.slice(0, 50).map((r, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: r.name,
+      url: SITE + '/r/' + (r.share_slug || r.slug),
+    })),
+  };
+
+  res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=86400');
+  res.status(200).send(pagina({
+    title, description, h1, lead, canonical, jsonld, trilha,
+    kicker: bairro ? 'Ocasião · ' + bairro : 'Ocasião',
+    cartoes: linhas.map((r) => cartao(r, notas, destaque(slug, r))).join(''),
+    relacionados: blocos.join('\n'),
+  }));
+}
+
 export default async function handler(req, res) {
   const q = req.query || {};
   const tipo = q.tipo || '';
@@ -242,6 +453,7 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
   const [idx, linhasCidades] = await Promise.all([indice(), sb('cities?select=id,name,state&limit=100')]);
+  if (tipo === 'ocasiao') return paginaOcasiao(res, a, b, idx, linhasCidades);
   const bairro = tipo === 'bairro' ? idx.bairros.get(aSlug(a)) : (b ? idx.bairros.get(aSlug(b)) : null);
   const cozinha = tipo === 'bairro' ? null : idx.cozinhas.get(aSlug(a));
   const tax = cozinha ? COZINHAS[cozinha] : null;
@@ -249,9 +461,10 @@ export default async function handler(req, res) {
   if (tipo === 'bairro' ? !bairro : !cozinha) return erro404(res);
   if (tipo === 'combo' && !bairro) return erro404(res);
 
-  // Cozinha que um guia já disputa não ganha página própria (ver taxonomia.js).
-  if (tipo === 'cozinha' && tax.guia) {
-    res.setHeader('Location', '/g/' + tax.guia);
+  // Cozinha que um guia (ou uma ocasião) já disputa não ganha página própria
+  // (ver taxonomia.js).
+  if (tipo === 'cozinha' && destinoFixo(tax)) {
+    res.setHeader('Location', destinoFixo(tax));
     res.status(308).end();
     return;
   }
@@ -295,6 +508,7 @@ export default async function handler(req, res) {
     lead = frases(
       rows.length + ' lugares em ' + bairro + naCidadeAposto + ' selecionados pelo Sello, na ordem da curadoria.',
       cozinhasTop.length ? 'Cozinhas mais presentes: ' + listaHumana(cozinhasTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
+      fatosDeOcasiao(idx, bairro),
       fraseFinal,
     );
     description = 'Onde comer em ' + bairro + naCidade + ': ' + rows.length + ' restaurantes com curadoria do Sello' +
@@ -326,9 +540,7 @@ export default async function handler(req, res) {
       { nome: maiuscula(tax.plural), href: '/restaurantes/' + tax.slug },
     ]);
   } else {
-    const melhor = rows
-      .filter((r) => notaDe(r, notas) != null)
-      .sort((a, b) => notaDe(b, notas) - notaDe(a, notas))[0];
+    const melhor = melhorAvaliado(rows, notas);
     h1 = maiuscula(tax.plural) + ' em ' + bairro;
     title = 'Os melhores ' + tax.plural + ' em ' + bairro + ufTitulo + ' | Sello';
     canonical = SITE + '/restaurantes/' + tax.slug + '/' + aSlug(bairro);
@@ -364,6 +576,9 @@ export default async function handler(req, res) {
       }
     }
     blocos.push(pilulas('Por cozinha em ' + bairro, porCozinha));
+    blocos.push(pilulas('Por ocasião em ' + bairro, Object.keys(OCASIOES)
+      .filter((o) => idx.oc.existeBairro(o, bairro))
+      .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' em ' + bairro) }))));
     blocos.push(pilulas('Outros bairros perto', [
       ...bairrosPerto(idx, bairro, 8).map((nb) => ({ href: '/onde-comer/' + aSlug(nb), txt: 'Onde comer em ' + nb })),
       todosOsGuias,

@@ -17,7 +17,8 @@
 
 import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
 import { cartao, CSS_CARTAO } from './cartao.js';
-import { COZINHAS, aSlug, MINIMO } from './taxonomia.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 import { notasComunidade, fmtNota } from './notas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -97,7 +98,7 @@ async function resolve(type, rawSlug) {
     // foi compartilhado e tudo que ainda venha de um app desatualizado.
     // rating_score/review_count NÃO entram: são a nota do Google Maps, e o
     // Google proíbe agregar nota de outro site no schema (ver fichaRestaurante).
-    const COLS = 'id,name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,lat,lng,catalog_json';
+    const COLS = 'id,name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,lat,lng,city_id,hours_periods,amenities,catalog_json';
     const r =
       (await sb(
         `restaurants?share_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
@@ -234,7 +235,7 @@ async function vizinhanca(r) {
   const c = r.catalog_json || {};
   const bairro = c.neighborhood || '';
   const cozinha = c.cuisine || '';
-  const [guias, doBairro, daCozinha] = await Promise.all([
+  const [guias, doBairro, daCozinha, cidades] = await Promise.all([
     r.id
       ? sbAll(
           `list_restaurants?restaurant_id=eq.${encodeURIComponent(r.id)}&select=lists!inner(title,slug,is_curated,is_public)&lists.is_curated=eq.true&lists.is_public=eq.true&limit=8`,
@@ -242,14 +243,16 @@ async function vizinhanca(r) {
       : [],
     bairro
       ? sbAll(
-          `restaurants?is_active=eq.true&catalog_json->>neighborhood=eq.${encodeURIComponent(bairro)}&select=name,slug,share_slug,catalog_json->>sello_score&limit=300`,
+          `restaurants?is_active=eq.true&catalog_json->>neighborhood=eq.${encodeURIComponent(bairro)}&select=name,slug,share_slug,catalog_json->>sello_score,catalog_json->>neighborhood,${COLS_OCASIAO}&limit=300`,
         )
       : [],
-    cozinha && COZINHAS[cozinha] && !COZINHAS[cozinha].guia
+    cozinha && COZINHAS[cozinha] && !destinoFixo(COZINHAS[cozinha])
       ? sbAll(
           `restaurants?is_active=eq.true&catalog_json->>cuisine=eq.${encodeURIComponent(cozinha)}&select=slug&limit=300`,
         )
       : [],
+    // A cidade sai do dado (restaurants.city_id → cities), nunca do código.
+    r.city_id ? sbAll(`cities?id=eq.${encodeURIComponent(r.city_id)}&select=name,state&limit=1`) : [],
   ]);
 
   const paginaBairro = doBairro.length >= MINIMO.bairro ? '/onde-comer/' + aSlug(bairro) : '';
@@ -257,8 +260,8 @@ async function vizinhanca(r) {
   // cozinha redireciona, de propósito, para não canibalizar).
   const tax = COZINHAS[cozinha];
   const paginaCozinha = tax
-    ? tax.guia
-      ? '/g/' + tax.guia
+    ? destinoFixo(tax)
+      ? destinoFixo(tax)
       : daCozinha.length >= MINIMO.cozinha
         ? '/restaurantes/' + tax.slug
         : ''
@@ -269,13 +272,78 @@ async function vizinhanca(r) {
     .sort((a, b) => Number(b.sello_score || 0) - Number(a.sello_score || 0))
     .slice(0, 4);
 
+  /* As ocasiões que ESTE lugar atende e que têm página no bairro dele — "abertos
+   * no domingo em Pinheiros". Mesma conta da rota, então nunca linka 404. */
+  const oc = contarOcasioes(doBairro, MINIMO);
+  const ocasioes = bairro
+    ? Object.keys(OCASIOES)
+        .filter((o) => atende(o, r) && oc.existeBairro(o, bairro))
+        .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' em ' + bairro) }))
+    : [];
+
   return {
+    cidade: cidades[0] && cidades[0].name ? { nome: cidades[0].name, uf: cidades[0].state || '' } : null,
+    ocasioes,
     guias: guias.map((g) => g.lists).filter((l) => l && l.slug && l.title),
     paginaBairro,
     paginaCozinha,
     pluralCozinha: tax ? tax.plural : '',
     vizinhos,
   };
+}
+
+/** ['a','b','c'] → "a, b e c". */
+function juntar(arr) {
+  return arr.length < 2 ? arr.join('') : arr.slice(0, -1).join(', ') + ' e ' + arr[arr.length - 1];
+}
+
+const DIAS_SCHEMA = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** "0130" → "01:30". */
+const hhmm = (t) => String(t || '').padStart(4, '0').replace(/^(\d\d)(\d\d)$/, '$1:$2');
+
+/**
+ * "Em resumo" — o parágrafo de fatos no topo da ficha.
+ *
+ * É o trecho que um assistente de IA (ou o resumo do Google) copia quando
+ * alguém pergunta "o X abre domingo?", "quanto custa?", "o que pedir lá?".
+ * O resto da ficha responde também, mas espalhado em seções; aqui fica tudo
+ * em frases inteiras, que é o formato que essas ferramentas extraem e citam.
+ *
+ * Só fato do dado, e cada frase some quando o dado não existe. Sem horário
+ * publicado, nada se diz sobre domingo: ausência de dado não é prova (regra
+ * do catálogo).
+ */
+function resumo(r, c, d) {
+  const out = [];
+  const onde = [d.bairro, d.cidade && d.cidade.nome].filter(Boolean).join(', ');
+  if (onde) out.push(r.name + ' fica em ' + onde + '.');
+  if (d.cozinha) out.push('Categoria no Sello: ' + d.cozinha + '.');
+  if (d.preco) out.push('Faixa de preço: ' + d.preco + ', numa escala de $ a $$$$.');
+  if (d.nc) {
+    out.push('Nota da comunidade do Sello: ' + fmtNota(d.nc.media) + ' de 10, com ' + d.nc.votos +
+      (d.nc.votos === 1 ? ' avaliação.' : ' avaliações.'));
+  }
+  const pratos = ((c.dishes && c.dishes.must_order) || []).filter((x) => x && x.name).slice(0, 3).map((x) => x.name);
+  if (pratos.length) out.push('Para pedir: ' + juntar(pratos) + '.');
+
+  const periodos = r.hours_periods || c.hours_periods || [];
+  if (periodos.length) {
+    const h = [];
+    h.push(atende('aberto-domingo', r) ? 'abre aos domingos' : 'não abre aos domingos');
+    if (atende('almoco', r)) h.push('serve almoço em dia de semana');
+    if (atende('aberto-ate-tarde', r)) h.push('fica aberto depois da meia-noite em algum dia');
+    out.push('Pelo horário publicado, ' + juntar(h) + '.');
+  }
+  const registros = [
+    atende('ao-ar-livre', r) ? 'mesas ao ar livre' : '',
+    atende('vegetariano', r) ? 'opções vegetarianas' : '',
+    atende('com-criancas', r) ? 'estrutura para crianças' : '',
+    atende('pet-friendly', r) ? 'aceitar pets' : '',
+  ].filter(Boolean);
+  if (registros.length) out.push('Há registro de ' + juntar(registros) + '.');
+  const nGuias = (d.guias || []).length;
+  if (nGuias) out.push('Aparece em ' + nGuias + (nGuias === 1 ? ' guia' : ' guias') + ' do Sello.');
+  return out.length > 1 ? '<section class="resumo"><h2>Em resumo</h2><p>' + esc(out.join(' ')) + '</p></section>' : '';
 }
 
 function fichaRestaurante(r, viz = {}, notas = new Map()) {
@@ -337,6 +405,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
     .join('');
   const explorar = [
     viz.paginaBairro ? '<li><a href="' + esc(viz.paginaBairro) + '">Onde comer em ' + esc(bairro) + '</a></li>' : '',
+    ...(viz.ocasioes || []).map((o) => '<li><a href="' + esc(o.href) + '">' + esc(o.txt) + '</a></li>'),
     viz.paginaCozinha && viz.pluralCozinha
       ? '<li><a href="' + esc(viz.paginaCozinha) + '">Mais ' + esc(viz.pluralCozinha) + '</a></li>'
       : '',
@@ -344,6 +413,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   ].filter(Boolean).join('');
 
   const body = [
+    resumo(r, c, { bairro, cozinha, preco, nc, cidade: viz.cidade, guias: viz.guias }),
     secao('O take do Sello', paragrafo(c.sello_take_body)),
     secao('Por que ir', lista(c.why_go)),
     secao('O que esperar', paragrafo(c.what_to_expect)),
@@ -376,6 +446,22 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   if (r.phone) jsonld.telephone = r.phone;
   if (r.address) {
     jsonld.address = { '@type': 'PostalAddress', streetAddress: r.address, addressCountry: 'BR' };
+    // Cidade e UF vêm de cities (via city_id) — campos separados de verdade.
+    if (viz.cidade) {
+      jsonld.address.addressLocality = viz.cidade.nome;
+      if (viz.cidade.uf) jsonld.address.addressRegion = viz.cidade.uf;
+    }
+  }
+  /* Horário estruturado: o mesmo dado da tabela "Horários" visível na página,
+   * no formato que a busca entende ("aberto agora?", "abre domingo?"). */
+  const periodos = (r.hours_periods || c.hours_periods || []).filter((p) => p && p.open && p.close);
+  if (periodos.length) {
+    jsonld.openingHoursSpecification = periodos.map((p) => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: 'https://schema.org/' + DIAS_SCHEMA[p.open.day],
+      opens: hhmm(p.open.time),
+      closes: hhmm(p.close.time),
+    }));
   }
   if (r.lat && r.lng) {
     jsonld.geo = { '@type': 'GeoCoordinates', latitude: r.lat, longitude: r.lng };

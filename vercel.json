@@ -1,5 +1,6 @@
 {
   "cleanUrls": true,
+  "crons": [{ "path": "/api/indexnow", "schedule": "0 10 * * *" }],
   "trailingSlash": false,
   "redirects": [
     {
@@ -32,6 +33,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/ocasioes/:ocasiao/:bairro",
+      "destination": "/api/lugares?tipo=ocasiao&a=:ocasiao&b=:bairro"
+    },
+    {
+      "source": "/ocasioes/:ocasiao",
+      "destination": "/api/lugares?tipo=ocasiao&a=:ocasiao"
+    },
     {
       "source": "/restaurantes/:cozinha/:bairro",
       "destination": "/api/lugares?tipo=combo&a=:cozinha&b=:bairro"

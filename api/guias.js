@@ -19,8 +19,9 @@
 
 import { TITULOS_DE_BUSCA } from './titulos-de-busca.js';
 import {
-  COZINHAS, aSlug, MINIMO, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
+  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
 } from './taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './ocasioes.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
@@ -56,10 +57,19 @@ function descoberta(rows) {
     .sort(porNome)
     .map((b) => ({ href: '/onde-comer/' + aSlug(b), txt: b }));
   const cozinhas = Object.keys(nCozinha)
-    .filter((c) => !COZINHAS[c].guia && nCozinha[c] >= MINIMO.cozinha)
+    .filter((c) => !destinoFixo(COZINHAS[c]) && nCozinha[c] >= MINIMO.cozinha)
     .sort((x, y) => porNome(COZINHAS[x].plural, COZINHAS[y].plural))
     .map((c) => ({ href: '/restaurantes/' + COZINHAS[c].slug, txt: COZINHAS[c].plural }));
-  return { bairros, cozinhas };
+  /* Ocasiões: a página geral quando existe; quando um guia disputa a busca,
+   * o link vai para o guia (é para lá que a página geral redireciona). */
+  const oc = contarOcasioes(rows, MINIMO);
+  const ocasioes = Object.keys(OCASIOES)
+    .map((o) => {
+      const href = OCASIOES[o].guia ? '/g/' + OCASIOES[o].guia : (oc.existeGeral(o) ? '/ocasioes/' + o : '');
+      return href ? { href, txt: OCASIOES[o].nome } : null;
+    })
+    .filter(Boolean);
+  return { bairros, cozinhas, ocasioes };
 }
 
 function pilulas(id, titulo, links) {
@@ -73,7 +83,7 @@ export default async function handler(req, res) {
   try {
     [guias, catalogo, cidades] = await Promise.all([
       sb('lists?is_curated=eq.true&is_public=eq.true&select=title,subtitle,slug,cover&order=position.asc&limit=200'),
-      sb('restaurants?is_active=eq.true&select=city_id,catalog_json->>neighborhood,catalog_json->>cuisine&limit=2000'),
+      sb('restaurants?is_active=eq.true&select=city_id,catalog_json->>neighborhood,catalog_json->>cuisine,' + COLS_OCASIAO + '&limit=2000'),
       sb('cities?select=id,name,state&limit=100'),
     ]);
   } catch {
@@ -81,7 +91,7 @@ export default async function handler(req, res) {
      * leva ao app. Melhor que um 500. */
   }
   guias = guias.filter((g) => g && g.slug && g.title);
-  const { bairros, cozinhas } = descoberta(catalogo);
+  const { bairros, cozinhas, ocasioes } = descoberta(catalogo);
 
   const itens = guias
     .map((g) => {
@@ -190,6 +200,7 @@ ${CSS_NAV}
     <ul>${itens}</ul>
     ${pilulas('bairros', 'Onde comer por bairro', bairros)}
     ${pilulas('cozinhas', 'Por cozinha', cozinhas)}
+    ${pilulas('ocasioes', 'Por ocasião', ocasioes)}
     <div class="foot"><a href="/baixar">Baixar o app</a></div>
   </main>
   ${rodape()}

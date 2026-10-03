@@ -39,7 +39,9 @@ export const COZINHAS = {
   'Árabe & Oriente Médio':    { slug: 'arabes',           plural: 'restaurantes árabes' },
   'Francesa':                 { slug: 'franceses',        plural: 'restaurantes franceses' },
   'Frutos do Mar':            { slug: 'frutos-do-mar',    plural: 'restaurantes de frutos do mar' },
-  'Brunch':                   { slug: 'brunch',           plural: 'lugares de brunch' },
+  // Brunch é mais OCASIÃO que cozinha: a página de ocasião (ocasioes.js) junta
+  // os 8 de cozinha "Brunch" e os ~40 outros que servem brunch no fim de semana.
+  'Brunch':                   { slug: 'brunch',           plural: 'lugares de brunch',        ocasiao: 'brunch' },
   'Hot Dog':                  { slug: 'hot-dog',          plural: 'hot dogs' },
   'Vegana':                   { slug: 'veganos',          plural: 'restaurantes veganos' },
 };
@@ -56,7 +58,17 @@ export function aSlug(s) {
 /** Piso de qualidade. Abaixo disto a página nasce fina, e página fina em
  *  escala é o que faz o Google desconfiar do site inteiro — o contrário do
  *  que estas páginas existem para conseguir. */
-export const MINIMO = { bairro: 8, cozinha: 8, combinacao: 5 };
+export const MINIMO = { bairro: 8, cozinha: 8, combinacao: 5, ocasiao: 8 };
+
+/** Para onde vai a página de uma cozinha que NÃO tem página própria porque
+ *  outra página já disputa a busca: o guia editorial ou a página de ocasião.
+ *  null = a cozinha tem (ou pode ter) página própria. */
+export function destinoFixo(t) {
+  if (!t) return null;
+  if (t.guia) return '/g/' + t.guia;
+  if (t.ocasiao) return '/ocasioes/' + t.ocasiao;
+  return null;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
  * A CIDADE vem do dado, nunca do código.
@@ -130,7 +142,7 @@ export function migalhas(itens) {
 
 export function rodape() {
   return '<footer class="rodape"><nav aria-label="Rodapé">' +
-    '<a href="/">Início</a><a href="/guias">Guias</a><a href="/sobre">Sobre</a><a href="/baixar">Baixar o app</a>' +
+    '<a href="/">Início</a><a href="/guias">Guias</a><a href="/guias#ocasioes">Ocasiões</a><a href="/sobre">Sobre</a><a href="/baixar">Baixar o app</a>' +
     '</nav></footer>';
 }
 

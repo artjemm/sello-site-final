@@ -26,7 +26,8 @@
  *   - Guia usa `lists.updated_at`, que só se move quando o guia é editado.
  */
 
-import { COZINHAS, aSlug, MINIMO } from './taxonomia.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
+import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
       sb(
         'restaurants?is_active=eq.true&select=slug,share_slug,' +
           'catalog_json->>neighborhood,catalog_json->>cuisine,' +
-          'catalog_json->>enriched_at,catalog_json->>created_at&limit=5000',
+          'catalog_json->>enriched_at,catalog_json->>created_at,' + COLS_OCASIAO + '&limit=5000',
       ),
       sb('lists?is_curated=eq.true&is_public=eq.true&select=slug,updated_at&order=updated_at.desc&limit=5000'),
     ]);
@@ -148,8 +149,8 @@ export default async function handler(req, res) {
     }
     for (const [c, e] of Object.entries(porCozinha)) {
       const t = COZINHAS[c];
-      // Cozinha com guia redireciona 308 para ele — nao e URL propria.
-      if (t && !t.guia && e.n >= MINIMO.cozinha) {
+      // Cozinha com guia (ou ocasiao) redireciona 308 para ele — nao e URL propria.
+      if (t && !destinoFixo(t) && e.n >= MINIMO.cozinha) {
         entradas.push({ loc: '/restaurantes/' + t.slug, lastmod: maisRecente(e.datas), freq: 'weekly', prio: '0.8' });
       }
     }
@@ -158,6 +159,29 @@ export default async function handler(req, res) {
       const t = COZINHAS[c];
       if (t && e.n >= MINIMO.combinacao) {
         entradas.push({ loc: '/restaurantes/' + t.slug + '/' + aSlug(b), lastmod: maisRecente(e.datas), freq: 'weekly', prio: '0.8' });
+      }
+    }
+
+    /* Ocasioes: a mesma conta da rota (ocasioes.js), entao so entra URL que
+     * responde 200. lastmod = o mais recente dos lugares que a pagina lista. */
+    const oc = contarOcasioes(rest, MINIMO);
+    const datasOc = {};
+    for (const r of rest) {
+      const d = dataEditorial(r);
+      for (const o of Object.keys(OCASIOES)) {
+        if (!atende(o, r)) continue;
+        (datasOc[o] || (datasOc[o] = [])).push(d);
+        if (r.neighborhood) (datasOc[o + '|' + r.neighborhood] || (datasOc[o + '|' + r.neighborhood] = [])).push(d);
+      }
+    }
+    for (const o of Object.keys(OCASIOES)) {
+      if (oc.existeGeral(o)) {
+        entradas.push({ loc: '/ocasioes/' + o, lastmod: maisRecente(datasOc[o] || []), freq: 'weekly', prio: '0.8' });
+      }
+      for (const b of Object.keys(oc.porBairro)) {
+        if (oc.existeBairro(o, b)) {
+          entradas.push({ loc: '/ocasioes/' + o + '/' + aSlug(b), lastmod: maisRecente(datasOc[o + '|' + b] || []), freq: 'weekly', prio: '0.7' });
+        }
       }
     }
 

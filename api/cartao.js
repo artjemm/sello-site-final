@@ -62,8 +62,11 @@ function ruaCurta(endereco) {
 }
 
 /** `notas` é o mapa de notasComunidade() (api/notas.js). Sem ele, ou sem
- *  avaliação para o lugar, o cartão não mostra nota — igual ao app. */
-export function cartao(r, notas) {
+ *  avaliação para o lugar, o cartão não mostra nota — igual ao app.
+ *  `destaque` ({ rotulo, valor }) é o dado que responde à pergunta da
+ *  página — o horário de domingo na página "abertos no domingo". Quando vem,
+ *  ocupa o lugar do horário de hoje. */
+export function cartao(r, notas, destaque) {
   const c = r.catalog_json || {};
   const href = '/r/' + (r.share_slug || r.slug);
   const nc = notas && notas.get ? notas.get(r.slug) : null;
@@ -92,7 +95,9 @@ export function cartao(r, notas) {
         (c.hook ? `<p class="ct__hook">${esc(c.hook)}</p>` : '') +
         `<dl class="ct__dados">` +
           (rua ? `<div><dt>Onde</dt><dd>${esc(rua)}</dd></div>` : '') +
-          (hoje ? `<div><dt>Horário</dt><dd>${esc(hoje)}</dd></div>` : '') +
+          (destaque
+            ? `<div><dt>${esc(destaque.rotulo)}</dt><dd>${esc(destaque.valor)}</dd></div>`
+            : hoje ? `<div><dt>Horário</dt><dd>${esc(hoje)}</dd></div>` : '') +
         `</dl>` +
       `</div>` +
     `</article>`
