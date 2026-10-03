@@ -116,9 +116,9 @@ async function resolve(type, rawSlug) {
       `lists?slug=eq.${encodeURIComponent(slug)}&is_curated=eq.true&is_public=eq.true&select=id,title,slug,cover,subtitle,intro&limit=1`,
     );
     if (!g) return null;
-    const [itens, outros, notas] = await Promise.all([
+    const [itens, outros, notas, bairrosDoCatalogo] = await Promise.all([
       sbAll(
-        `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,hero_image,address,price_level,catalog_json)&order=position.asc&limit=200`,
+        `list_restaurants?list_id=eq.${encodeURIComponent(g.id)}&select=position,restaurants(name,slug,share_slug,hero_image,address,price_level,hours_periods,amenities,catalog_json)&order=position.asc&limit=200`,
       ),
       // Outros guias, para a página não ser beco sem saída: quem leu um guia
       // inteiro é exatamente quem abre o próximo.
@@ -126,8 +126,13 @@ async function resolve(type, rawSlug) {
         `lists?is_curated=eq.true&is_public=eq.true&slug=neq.${encodeURIComponent(g.slug)}&select=title,slug&order=updated_at.desc&limit=6`,
       ),
       notasComunidade(),
+      // Quantos lugares cada bairro tem no catálogo: diz se a página do bairro
+      // existe (piso MINIMO.bairro) antes de linkar para ela.
+      sbAll('restaurants?is_active=eq.true&select=catalog_json->>neighborhood&limit=2000'),
     ]);
-    return fichaGuia(g, itens, outros, notas);
+    const nBairro = {};
+    for (const x of bairrosDoCatalogo) if (x.neighborhood) nBairro[x.neighborhood] = (nBairro[x.neighborhood] || 0) + 1;
+    return fichaGuia(g, itens, outros, notas, nBairro);
   }
 
   if (type === 'l') {
@@ -524,7 +529,49 @@ function breadcrumbLd(trilha) {
  * porta de entrada a não ser alguém compartilhar o link por fora.
  * ────────────────────────────────────────────────────────────────────────── */
 
-function fichaGuia(g, itens, outros = [], notas = new Map()) {
+/**
+ * "Em resumo" do guia: o que a lista tem, em números — onde ficam, quantos
+ * abrem no domingo, quanto custam, que nota a comunidade dá. É o parágrafo que
+ * responde "esse guia serve para mim?" e o que um assistente cita. Só conta;
+ * não opina — a opinião é o intro da curadoria, logo acima.
+ */
+function resumoGuia(restaurantes, notas) {
+  const n = restaurantes.length;
+  if (n < 3) return '';
+  const cont = {};
+  for (const r of restaurantes) {
+    const b = r.catalog_json && r.catalog_json.neighborhood;
+    if (b) cont[b] = (cont[b] || 0) + 1;
+  }
+  const top = Object.entries(cont).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'pt-BR')).filter((e) => e[1] >= 2).slice(0, 3);
+  const out = [];
+  out.push(n + ' lugares' + (top.length ? ', com mais presença em ' + juntar(top.map((e) => e[0] + ' (' + e[1] + ')')) : '') + '.');
+
+  const comHorario = restaurantes.filter((r) => (r.hours_periods || (r.catalog_json && r.catalog_json.hours_periods) || []).length);
+  if (comHorario.length) {
+    const dom = comHorario.filter((r) => atende('aberto-domingo', r)).length;
+    const tarde = comHorario.filter((r) => atende('aberto-ate-tarde', r)).length;
+    const h = [dom + (dom === 1 ? ' abre' : ' abrem') + ' no domingo'];
+    if (tarde) h.push(tarde + (tarde === 1 ? ' fica aberto' : ' ficam abertos') + ' depois da meia-noite em algum dia');
+    out.push('Pelo horário publicado, ' + juntar(h) + '.');
+  }
+  const faixas = {};
+  for (const r of restaurantes) {
+    const c = r.catalog_json || {};
+    const f = cifroes(c.price_range != null ? c.price_range : r.price_level);
+    if (f) faixas[f] = (faixas[f] || 0) + 1;
+  }
+  const faixa = Object.entries(faixas).sort((x, y) => y[1] - x[1])[0];
+  if (faixa && faixa[1] * 3 >= n) out.push('Faixa de preço mais comum: ' + faixa[0] + '.');
+  const avaliados = restaurantes.map((r) => notas.get(r.slug)).filter(Boolean);
+  if (avaliados.length >= 3) {
+    const media = avaliados.reduce((a, x) => a + x.media, 0) / avaliados.length;
+    out.push('Nota média da comunidade: ' + fmtNota(media) + ', entre os ' + avaliados.length + ' lugares já avaliados.');
+  }
+  return '<section class="resumo"><h2>Em resumo</h2><p>' + esc(out.join(' ')) + '</p></section>';
+}
+
+function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
   /* Mesmo cartao das paginas de descoberta: foto, nota, faixa de preco,
    * endereco e horario de hoje. Uma lista de nomes nao ajuda ninguem a decidir
    * onde jantar, e o dado para decidir ja estava no catalogo. */
@@ -553,10 +600,19 @@ function fichaGuia(g, itens, outros = [], notas = new Map()) {
     .filter((o) => o && o.slug && o.title)
     .map((o) => '<li><a href="/g/' + esc(o.slug) + '">' + esc(o.title) + '</a></li>')
     .join('');
+  /* Os bairros do guia que têm página própria: quem gostou da lista e mora
+   * (ou vai estar) num deles continua por ali. Só linka página que existe. */
+  const bairrosDoGuia = [...new Set(restaurantes.map((r) => r.catalog_json && r.catalog_json.neighborhood).filter(Boolean))]
+    .filter((b) => (nBairro[b] || 0) >= MINIMO.bairro)
+    .sort((x, y) => x.localeCompare(y, 'pt-BR'))
+    .map((b) => '<li><a href="/onde-comer/' + esc(aSlug(b)) + '">Onde comer em ' + esc(b) + '</a></li>')
+    .join('');
   const body = [
+    resumoGuia(restaurantes, notas),
     linhas.length
       ? '<section><h2>Os restaurantes deste guia</h2>' + linhas.join('') + '</section>'
       : '',
+    bairrosDoGuia ? '<section><h2>Por bairro</h2><ul class="links">' + bairrosDoGuia + '</ul></section>' : '',
     '<section><h2>Outros guias</h2><ul class="links">' + maisGuias +
       '<li><a href="/guias">Ver todos os guias</a></li></ul></section>',
   ].filter(Boolean).join('');
