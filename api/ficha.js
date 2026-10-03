@@ -158,6 +158,26 @@ function lateral(r, c, d) {
     '</div></aside>';
 }
 
+/**
+ * A linha embaixo do nome: "Nº 3 de 26 avaliados em Pinheiros · Japonesa, $$$".
+ *
+ * A posição é pela nota média da COMUNIDADE (a mesma do selo), só entre os
+ * lugares com ao menos 3 avaliações — com uma ou duas, um 10,0 diz mais sobre
+ * quem avaliou do que sobre o lugar, e o ranking viraria sorteio. Por isso o
+ * texto diz "avaliados" e não "restaurantes": o total é de quem entrou na
+ * conta, não do bairro inteiro. Lugar fora da conta não ganha posição; a linha
+ * fica só com cozinha e preço.
+ */
+function linhaPosicao(d, preco) {
+  const p = d.posicao;
+  const pos = p
+    ? '<a class="fx-linha__pos" href="' + esc(p.href || '#avaliacoes') + '" title="Posição pela nota média da comunidade, entre os lugares com 3 ou mais avaliações">' +
+      'Nº ' + p.n + ' de ' + p.total + ' avaliados ' + esc(p.onde) + '</a>'
+    : '';
+  const tipo = [d.cozinha ? esc(d.cozinha) : '', preco].filter(Boolean).join(', ');
+  return pos || tipo ? '<p class="fx-linha">' + pos + (pos && tipo ? '<span class="fx-linha__sep"></span>' : '') + (tipo ? '<span>' + tipo + '</span>' : '') + '</p>' : '';
+}
+
 function listaLinks(titulo, itens) {
   const li = itens.filter(Boolean).join('');
   return li ? '<section class="fx-sec"><h2 class="fx-h2">' + esc(titulo) + '</h2><ul class="fx-pilulas">' + li + '</ul></section>' : '';
@@ -175,15 +195,15 @@ export function layoutRestaurante(r, c, d) {
   const topo =
     '<header class="fx-topo">' +
       d.trilhaHtml +
-      '<div class="fx-kicker">' + esc([d.cozinha, d.bairro].filter(Boolean).join(' · ') || 'Restaurante') + '</div>' +
+      '<div class="fx-kicker">' + esc([d.bairro, d.cidade && d.cidade.nome].filter(Boolean).join(' · ') || 'Restaurante') + '</div>' +
       '<h1 class="fx-h1">' + esc(r.name) + '</h1>' +
+      linhaPosicao(d, precoVisual(c.price_range != null ? c.price_range : r.price_level)) +
       (c.hook ? '<p class="fx-gancho">' + esc(c.hook) + '</p>' : '') +
       '<div class="fx-meta">' +
         (d.nc
           ? '<a class="fx-selo" href="#avaliacoes" aria-label="Nota da comunidade: ' + esc(fmtNota(d.nc.media)) + ' de 10">' +
             '<strong>' + esc(fmtNota(d.nc.media)) + '</strong><span>' + d.nc.votos + (d.nc.votos === 1 ? ' avaliação' : ' avaliações') + '</span></a>'
           : '') +
-        precoVisual(c.price_range != null ? c.price_range : r.price_level) +
         (nGuias ? '<a class="fx-meta__guias" href="#guias">Em ' + nGuias + (nGuias === 1 ? ' guia' : ' guias') + ' do Sello</a>' : '') +
       '</div>' +
       (chips.length ? '<ul class="fx-chips">' + chips.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>' : '') +
@@ -299,6 +319,11 @@ export const CSS_FICHA = `
   .fx-kicker { font-size:13px; color:var(--red); font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px; }
   .fx-h1 { font-family:'Anton SC',sans-serif; font-weight:400; text-transform:uppercase; font-size:clamp(32px,4.6vw,52px);
            line-height:1.12; padding-top:.06em; margin:0 0 8px; }
+  .fx-linha { display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; margin:2px 0 12px; font-size:15px; color:var(--ink); }
+  .fx-linha__pos { color:var(--ink); font-weight:600; text-decoration:underline; text-underline-offset:4px; text-decoration-thickness:1px; }
+  .fx-linha__pos:hover { color:var(--red); }
+  .fx-linha__sep { width:1px; height:16px; background:#D5D7DD; }
+  .fx-linha .fx-preco { font-size:15px; }
   .fx-gancho { font-size:17px; color:var(--muted); line-height:1.5; margin:0 0 14px; max-width:760px; }
   .fx-meta { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; }
   .fx-selo { display:inline-flex; align-items:center; gap:8px; background:var(--red); color:#fff; border-radius:999px;

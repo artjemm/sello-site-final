@@ -241,7 +241,7 @@ async function vizinhanca(r) {
   const c = r.catalog_json || {};
   const bairro = c.neighborhood || '';
   const cozinha = c.cuisine || '';
-  const [guias, doBairro, daCozinha, cidades] = await Promise.all([
+  const [guias, doBairro, daCozinha, cidades, ativos] = await Promise.all([
     r.id
       ? sbAll(
           `list_restaurants?restaurant_id=eq.${encodeURIComponent(r.id)}&select=lists!inner(title,slug,is_curated,is_public)&lists.is_curated=eq.true&lists.is_public=eq.true&limit=8`,
@@ -259,6 +259,9 @@ async function vizinhanca(r) {
       : [],
     // A cidade sai do dado (restaurants.city_id → cities), nunca do código.
     r.city_id ? sbAll(`cities?id=eq.${encodeURIComponent(r.city_id)}&select=name,state&limit=1`) : [],
+    // Para a posição na cidade: a nota vem de todos os restaurantes, inclusive
+    // os desativados; o ranking só conta quem está no ar.
+    sbAll('restaurants?is_active=eq.true&select=slug&limit=5000'),
   ]);
 
   const paginaBairro = doBairro.length >= MINIMO.bairro ? '/onde-comer/' + aSlug(bairro) : '';
@@ -289,6 +292,8 @@ async function vizinhanca(r) {
 
   return {
     cidade: cidades[0] && cidades[0].name ? { nome: cidades[0].name, uf: cidades[0].state || '' } : null,
+    slugsDoBairro: doBairro.map((v) => v.slug),
+    slugsAtivos: ativos.map((v) => v.slug),
     ocasioes,
     guias: guias.map((g) => g.lists).filter((l) => l && l.slug && l.title),
     paginaBairro,
@@ -419,11 +424,32 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   ].filter(Boolean).join('');
 
   const resumoHtml = resumo(r, c, { bairro, cozinha, preco, nc, cidade: viz.cidade, guias: viz.guias });
+
+  /* Posição pela nota da comunidade (ver linhaPosicao em ficha.js). No bairro
+   * quando ele tem ao menos 5 lugares na conta — "Nº 1 de 2" não diz nada —,
+   * senão na cidade. */
+  const MIN_VOTOS = 3;
+  const ranking = (slugs) => slugs
+    .map((s) => [s, notas.get(s)])
+    .filter(([, n]) => n && n.votos >= MIN_VOTOS)
+    .sort((a, b) => b[1].media - a[1].media || b[1].votos - a[1].votos);
+  let posicao = null;
+  const noBairro = ranking(viz.slugsDoBairro || []);
+  const iB = noBairro.findIndex(([s]) => s === r.slug);
+  if (iB >= 0 && noBairro.length >= 5) {
+    posicao = { n: iB + 1, total: noBairro.length, onde: 'em ' + bairro, href: viz.paginaBairro || '' };
+  } else {
+    const naCidade = ranking(viz.slugsAtivos || []);
+    const iC = naCidade.findIndex(([s]) => s === r.slug);
+    if (iC >= 0 && naCidade.length >= 5) {
+      posicao = { n: iC + 1, total: naCidade.length, onde: viz.cidade ? 'em ' + viz.cidade.nome : 'no Sello', href: '/guias' };
+    }
+  }
   const trilhaFicha = [{ name: 'Início', url: '/' }];
   if (viz.paginaBairro) trilhaFicha.push({ name: bairro, url: viz.paginaBairro });
   trilhaFicha.push({ name: r.name });
   const main = layoutRestaurante(r, c, {
-    cozinha, bairro, nc,
+    cozinha, bairro, nc, posicao, cidade: viz.cidade,
     deepLink: 'sello://restaurant/' + r.slug,
     appStore: APP_STORE, playStore: PLAY_STORE,
     guias: viz.guias || [],
