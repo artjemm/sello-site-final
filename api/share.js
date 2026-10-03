@@ -21,6 +21,7 @@ import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 import { notasComunidade, fmtNota } from './notas.js';
 import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './ficha.js';
+import { fontesExternas } from './avaliacoes-externas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -97,9 +98,10 @@ async function resolve(type, rawSlug) {
     // O endereço novo é o nome (z-deli-restaurante-delicatessen); o antigo é o
     // identificador interno (r632). Aceitar os dois mantém válido tudo que já
     // foi compartilhado e tudo que ainda venha de um app desatualizado.
-    // rating_score/review_count NÃO entram: são a nota do Google Maps, e o
-    // Google proíbe agregar nota de outro site no schema (ver fichaRestaurante).
-    const COLS = 'id,name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,lat,lng,city_id,hours_periods,amenities,catalog_json';
+    // rating_score/review_count são a nota do Google Maps: entram SÓ no card
+    // visível de "Avaliações externas" (avaliacoes-externas.js), nunca no
+    // schema — o Google proíbe agregar nota de outro site (ver fichaRestaurante).
+    const COLS = 'id,name,slug,share_slug,hero_image,address,phone,instagram,menu_url,website,price_level,lat,lng,city_id,hours_periods,amenities,rating_score,review_count,google_place_id,catalog_json';
     const r =
       (await sb(
         `restaurants?share_slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
@@ -450,6 +452,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   trilhaFicha.push({ name: r.name });
   const main = layoutRestaurante(r, c, {
     cozinha, bairro, nc, posicao, cidade: viz.cidade,
+    externas: fontesExternas(r, c),
     deepLink: 'sello://restaurant/' + r.slug,
     appStore: APP_STORE, playStore: PLAY_STORE,
     guias: viz.guias || [],

@@ -24,6 +24,7 @@
 
 import { esc } from './cartao.js';
 import { fmtNota } from './notas.js';
+import { fmtNotaFonte } from './avaliacoes-externas.js';
 
 /* Versões dos arquivos da home — as mesmas que o index.html pede, para o
  * navegador reaproveitar o cache de quem veio de lá. */
@@ -205,7 +206,36 @@ function pratos(c) {
       '</article>').join('') + '</div>');
 }
 
-function avaliacoes(c, nc, deepLink) {
+/**
+ * "Avaliações externas" — os mesmos cards do app (components/ExternalRatingCard
+ * no repositório do app, Figma 410-1003): logo da fonte, nome, quantas
+ * avaliações e, à direita, a marca da fonte com a nota na escala DELA (0–5).
+ * Uma marca só — bolinha do Tripadvisor, estrela do Google —, porque com o
+ * número escrito ao lado cinco marcas viram decoração. Não é link, como no app:
+ * o card é um dado a mais na ficha, não uma porta de saída.
+ *
+ * Marca de terceiro: os logotipos são os do Figma do projeto, como no app.
+ * Tripadvisor e Google pedem os arquivos oficiais das páginas de marca deles.
+ */
+function externas(fontes) {
+  if (!(fontes || []).length) return '';
+  const marca = (id) => id === 'google'
+    ? '<svg class="fx-fonte__estrela" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>'
+    : '<span class="fx-fonte__bola" aria-hidden="true"></span>';
+  return '<h3 class="fx-h3">Avaliações externas</h3><div class="fx-fontes">' +
+    fontes.map((f, i) => {
+      const legenda = f.total != null
+        ? f.total.toLocaleString('pt-BR') + (f.total === 1 ? ' avaliação' : ' avaliações')
+        : 'Sem avaliações';
+      return '<div class="fx-fonte" style="--i:' + i + '" aria-label="' + esc(f.nome + ': ' + legenda + (f.nota != null ? ', nota ' + fmtNotaFonte(f.nota) + ' de 5' : '')) + '">' +
+        '<img class="fx-fonte__logo" src="/assets/brands/' + (f.id === 'google' ? 'google-maps' : 'tripadvisor') + '.png" alt="" width="40" height="40" loading="lazy" decoding="async" />' +
+        '<div class="fx-fonte__txt"><strong>' + esc(f.nome) + '</strong><span>' + esc(legenda) + '</span></div>' +
+        (f.nota != null ? '<div class="fx-fonte__nota">' + marca(f.id) + '<b>' + esc(fmtNotaFonte(f.nota)) + '</b></div>' : '') +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+function avaliacoes(c, nc, deepLink, fontes) {
   const nota = nc
     ? '<div class="fx-nota">' +
         '<div class="fx-nota__n"><strong data-fx-conta="' + esc(nc.media.toFixed(1)) + '">' + esc(fmtNota(nc.media)) + '</strong><span>de 10</span></div>' +
@@ -220,7 +250,7 @@ function avaliacoes(c, nc, deepLink) {
       '<blockquote>' + esc(c.community_summary) + '</blockquote><figcaption>O que dizem de lá</figcaption></figure>'
     : '';
   return secao('avaliacoes', 'Comunidade', 'Avaliações',
-    '<div class="fx-aval">' + nota + dizem + '</div>',
+    '<div class="fx-aval">' + nota + dizem + '</div>' + externas(fontes),
     '<div class="fx-sec__acao" data-reveal data-delay="1">' + botao(deepLink, 'Avaliar no app', 'btn--dark') + '</div>');
 }
 
@@ -340,7 +370,7 @@ export function layoutRestaurante(r, c, d) {
       '</div></nav>' +
       '<div class="wrap fx-grade">' +
         '<div class="fx-col">' +
-          visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink) + galeria(fotos, r.name) +
+          visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink, d.externas) + galeria(fotos, r.name) +
           horario(c) + mapa(r, c) + guias + vizinhos +
           ((d.explorar || []).length ? secao('', 'Continue', 'Explore', pilulas(d.explorar)) : '') +
         '</div>' +
@@ -651,6 +681,24 @@ export const CSS_FICHA = `
   .fx-dizem blockquote { position:relative; margin:0; line-height:1.7; color:var(--ink); }
   .fx-dizem figcaption { margin-top:14px; font-size:.82rem; font-weight:700; color:var(--red); }
 
+  /* avaliações externas (mesmo desenho do app) */
+  .fx-fontes { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+  .fx-fonte { display:flex; align-items:center; gap:12px; padding:16px; border-radius:16px; border:1px solid #E0E0E0; background:#fff;
+    transition:border-color .35s var(--ease), box-shadow .35s var(--ease), transform .35s var(--ease); }
+  .fx-fonte:hover { border-color:transparent; box-shadow:0 18px 36px -22px rgba(13,17,27,.4); transform:translateY(-3px); }
+  .fx-fonte__logo { width:40px; height:40px; object-fit:contain; flex:none; }
+  .fx-fonte__txt { flex:1; min-width:0; display:grid; gap:2px; line-height:1.35; }
+  .fx-fonte__txt strong { font-size:.88rem; color:#000; }
+  .fx-fonte__txt span { font-size:.88rem; color:#515151; }
+  .fx-fonte__nota { display:flex; align-items:center; gap:8px; flex:none; }
+  .fx-fonte__nota b { font-family:var(--font-disp); font-weight:400; font-size:1.65rem; line-height:1; color:#141212; padding-top:2px; }
+  .fx-fonte__bola { width:14px; height:14px; border-radius:50%; background:#39DFA2; }
+  .fx-fonte__estrela { width:17px; height:17px; fill:#FFCE00; }
+  [data-reveal] .fx-fonte { opacity:0; transform:translateY(16px); transition:opacity .7s var(--ease), transform .7s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease);
+    transition-delay:calc(var(--i,0) * 90ms + 350ms); }
+  [data-reveal].is-in .fx-fonte { opacity:1; transform:none; }
+  [data-reveal].is-in .fx-fonte:hover { transform:translateY(-3px); transition-delay:0s; }
+
   /* fotos */
   .fx-bento { display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:150px; gap:10px; }
   .fx-bento__item { position:relative; padding:0; border:0; cursor:zoom-in; border-radius:18px; overflow:hidden; background:var(--light); }
@@ -769,7 +817,7 @@ export const CSS_FICHA = `
     .fx-linha__sep { display:none; }
   }
   @media (prefers-reduced-motion:reduce) {
-    [data-reveal] .fx-prato, [data-reveal] .fx-bento__item, [data-reveal] .fx-check .chip { opacity:1 !important; transform:none !important; transition:none !important; }
+    [data-reveal] .fx-prato, [data-reveal] .fx-bento__item, [data-reveal] .fx-check .chip, [data-reveal] .fx-fonte { opacity:1 !important; transform:none !important; transition:none !important; }
     .fx-nota__barra i::after { transform:scaleX(var(--v)) !important; transition:none !important; }
     .fx-agora.aberto .fx-agora__ponto::after { animation:none; }
   }
