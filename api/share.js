@@ -20,6 +20,7 @@ import { cartao, CSS_CARTAO } from './cartao.js';
 import { COZINHAS, aSlug, MINIMO, destinoFixo } from './taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './ocasioes.js';
 import { notasComunidade, fmtNota } from './notas.js';
+import { layoutRestaurante, CSS_FICHA, JS_FICHA, foto } from './ficha.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -417,8 +418,30 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
     '<li><a href="/guias">Todos os guias do Sello</a></li>',
   ].filter(Boolean).join('');
 
+  const resumoHtml = resumo(r, c, { bairro, cozinha, preco, nc, cidade: viz.cidade, guias: viz.guias });
+  const trilhaFicha = [{ name: 'Início', url: '/' }];
+  if (viz.paginaBairro) trilhaFicha.push({ name: bairro, url: viz.paginaBairro });
+  trilhaFicha.push({ name: r.name });
+  const main = layoutRestaurante(r, c, {
+    cozinha, bairro, nc,
+    deepLink: 'sello://restaurant/' + r.slug,
+    appStore: APP_STORE, playStore: PLAY_STORE,
+    guias: viz.guias || [],
+    resumoHtml,
+    trilhaHtml: '<nav class="trilha" aria-label="Você está em">' + trilhaFicha.map((t, i, a) =>
+      i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url) + '">' + esc(t.name) + '</a>',
+    ).join(' <span aria-hidden="true">›</span> ') + '</nav>',
+    vizinhosHtml: (viz.vizinhos || []).length
+      ? '<ul class="fx-pilulas">' + viz.vizinhos.map((v) => {
+          const vn = notas.get(v.slug);
+          return '<li><a href="/r/' + esc(v.share_slug || v.slug) + '">' + esc(v.name) + (vn ? ' · ' + esc(fmtNota(vn.media)) : '') + '</a></li>';
+        }).join('') + '</ul>'
+      : '',
+    explorar: explorar.match(/<li>.*?<\/li>/g) || [],
+  });
+
   const body = [
-    resumo(r, c, { bairro, cozinha, preco, nc, cidade: viz.cidade, guias: viz.guias }),
+    resumoHtml,
     secao('O take do Sello', paragrafo(c.sello_take_body)),
     secao('Por que ir', lista(c.why_go)),
     secao('O que esperar', paragrafo(c.what_to_expect)),
@@ -505,6 +528,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
     path: path,
     trilha: trilha,
     body: body,
+    main: main,
     jsonld: [jsonld, breadcrumbLd(trilha)],
   };
 }
@@ -745,9 +769,19 @@ ${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).rep
   ul.links li { padding:6px 0; }
   ul.links a { color:var(--ink); font-weight:600; }
 ${CSS_CARTAO}
+${data.main ? CSS_FICHA : ''}
 </style>
+${data.main && data.image ? '<link rel="preload" as="image" href="' + esc(foto(data.image, 1200)) + '" fetchpriority="high" />' : ''}
 </head>
-<body class="${data.body ? 'ficha' : ''}">
+${data.main ? `<body class="rest">
+  <header class="fx-barra"><div class="fx-barra__in">
+    <a class="fx-logo" href="/" aria-label="Sello — início">SELLO</a>
+    <nav aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>
+    <a class="fx-btn fx-btn--primario" href="/baixar">Baixar o app</a>
+  </div></header>
+  ${data.main}
+  <footer class="fx-rodape"><a href="/">Início</a><a href="/guias">Guias</a><a href="/sobre">Sobre o Sello</a><a href="/baixar">Baixar o app</a></footer>
+<script>${JS_FICHA}</script>` : `<body class="${data.body ? 'ficha' : ''}">
   <main class="card">
     <img class="cover" src="${esc(img)}" alt="${esc(data.imageAlt || '')}" onerror="this.src='${esc(OG_FALLBACK)}'" />
     ${trilha}
@@ -764,7 +798,7 @@ ${CSS_CARTAO}
     </div>
     ${data.body || ''}
     <div class="foot"><a href="/">Início</a><a href="/guias">Guias</a><a href="/sobre">Sobre o Sello</a></div>
-  </main>
+  </main>`}
 <script>
   // Quem já tem o app vai direto para a tela certa. Só depois de um gesto? Não:
   // navegadores bloqueiam a abertura automática de esquema em alguns casos, e o
