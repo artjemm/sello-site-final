@@ -405,12 +405,10 @@ export function layoutRestaurante(r, c, d) {
   '</main>' +
   /* Barra fixa de download. O botão sai para /baixar (funciona sem JS); no
    * celular o JS troca pelo link direto da loja do aparelho — um toque e a
-   * pessoa está na App Store ou no Google Play. No computador, o QR leva o
-   * download para o celular (passar o mouse amplia o código). */
+   * pessoa está na App Store ou no Google Play. */
   '<div class="fx-barra-app" id="fx-barra-app" role="complementary" aria-label="Baixar o app do Sello">' +
     '<span class="fx-barra-app__selo" aria-hidden="true"></span>' +
     '<p><strong>Salve e avalie no app</strong><span>Mapa, listas e a nota de quem foi.</span></p>' +
-    '<span class="fx-barra-app__qr" title="Aponte a câmera do celular"><img src="/assets/img/qr.png?v=2" alt="QR code para baixar o app do Sello" width="640" height="640" loading="lazy" decoding="async" /></span>' +
     '<a class="btn btn--accent fx-barra-app__baixar" id="fx-baixar" href="/baixar" data-ios="' + esc(d.appStore) + '" data-android="' + esc(d.playStore) + '"><span class="btn__t">Baixar o app</span></a>' +
   '</div>' +
   '<div class="fx-lb" id="fx-lb" hidden aria-modal="true" role="dialog" aria-label="Fotos">' +
@@ -792,17 +790,12 @@ export const CSS_FICHA = `
   .fx-barra-app p { margin:0; flex:1; min-width:0; line-height:1.3; }
   .fx-barra-app strong { display:block; font-size:.95rem; }
   .fx-barra-app p span { display:block; font-size:.8rem; color:rgba(255,255,255,.62); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .fx-barra-app__qr { position:relative; flex:none; width:46px; height:46px; padding:4px; border-radius:10px; background:#fff; cursor:zoom-in;
-    transform-origin:bottom center; transition:transform .45s var(--ease), box-shadow .45s var(--ease); }
-  .fx-barra-app__qr img { width:100%; height:100%; display:block; }
-  .fx-barra-app__qr:hover { transform:translateY(-6px) scale(3.2); box-shadow:0 14px 30px -10px rgba(0,0,0,.6); }
   .fx-barra-app__baixar { flex:none; height:46px; min-width:0; padding:0 22px; font-size:18px; overflow:hidden; }
   .fx-barra-app__baixar::after { content:""; position:absolute; top:0; bottom:0; left:-60%; width:40%; transform:skewX(-20deg);
     background:linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); animation:fxBrilho 4.5s var(--ease) infinite 1.5s; }
   @keyframes fxBrilho { 0% { left:-60%; } 30%, 100% { left:130%; } }
   @media (max-width:900px) {
     .fx-barra-app { bottom:calc(10px + env(safe-area-inset-bottom)); gap:12px; border-radius:22px; }
-    .fx-barra-app__qr { display:none; }
     .fx-barra-app__selo { width:40px; height:40px; border-radius:12px; background-size:26px; }
     .fx-barra-app strong { font-size:.88rem; }
     .fx-barra-app p span { font-size:.75rem; }
