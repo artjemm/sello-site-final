@@ -111,6 +111,16 @@ export const OCASIOES = {
     criterio: 'estão nas duas faixas de preço mais baixas do Sello ($ e $$, de quatro)',
     teste: (s) => s.preco === 1 || s.preco === 2,
   },
+  // O par do bom e barato. 'restaurantes chiques sp' (3.600/mês) e 'restaurantes
+  // mais caros de sp' são buscados assim; o critério é só a faixa de preço — nada
+  // de 'estrela Michelin', que exige a lista oficial conferida.
+  'alta-gastronomia': {
+    nome: 'Alta gastronomia',
+    titulo: (onde) => 'Alta gastronomia' + onde,
+    busca: (onde) => 'Restaurantes chiques e alta gastronomia' + onde,
+    criterio: 'estão na faixa de preço mais alta do Sello ($$$$, de quatro)',
+    teste: (s) => s.preco === 4,
+  },
   'romantico': {
     nome: 'Jantar a dois',
     titulo: (onde) => 'Jantar a dois' + onde,
