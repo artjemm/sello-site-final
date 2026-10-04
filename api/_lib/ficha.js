@@ -361,12 +361,39 @@ function pilulas(itens) {
  * e o popup de download da home. Uma fonte só, para a ficha e as listagens
  * (bairro, cozinha, ocasião, guia) não divergirem. */
 
-export function navHome() {
+/**
+ * A barra da home. Com `abas` (a ficha), vira: logo | seções da página no
+ * meio | menu (hambúrguer que abre Guias/Bairros/Ocasiões no hover) | baixar.
+ * Sem abas, é a barra da home como está (listagens).
+ */
+export function navHome(abas) {
+  if (!(abas || []).length) {
+    return '' +
+    '<header class="nav" id="nav"><div class="nav__inner">' +
+      '<a class="nav__brand" href="/" aria-label="Sello — início"><span class="nav__wordmark" aria-hidden="true"></span></a>' +
+      '<nav class="nav__menu" aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>' +
+      botao('/baixar', 'Baixar o app', 'btn--accent btn--app') +
+    '</div></header>';
+  }
+  const explorar = [
+    ['/guias', 'Guias', 'Listas editoriais do Sello'],
+    ['/guias#bairros', 'Bairros', 'Onde comer em cada região'],
+    ['/guias#ocasioes', 'Ocasiões', 'Domingo, até tarde, brunch e mais'],
+  ];
   return '' +
-  '<header class="nav" id="nav"><div class="nav__inner">' +
+  '<header class="nav nav--ficha" id="nav"><div class="nav__inner">' +
     '<a class="nav__brand" href="/" aria-label="Sello — início"><span class="nav__wordmark" aria-hidden="true"></span></a>' +
-    '<nav class="nav__menu" aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>' +
-    botao('/baixar', 'Baixar o app', 'btn--accent btn--app') +
+    '<nav class="fx-abas" aria-label="Seções da página"><div class="fx-abas__in">' +
+      abas.map(([id, t]) => '<a href="#' + id + '">' + esc(t) + '</a>').join('') +
+      '<i class="fx-abas__barra" aria-hidden="true"></i>' +
+    '</div></nav>' +
+    '<div class="nav__mais">' +
+      '<button class="nav__burger" type="button" aria-expanded="false" aria-controls="nav-explorar" aria-label="Explorar o Sello"><i></i><i></i><i></i></button>' +
+      '<nav class="nav__drop" id="nav-explorar" aria-label="Explorar"><div class="nav__drop-in">' +
+        explorar.map(([h, t, d]) => '<a href="' + h + '"><b>' + t + '</b><span>' + d + '</span></a>').join('') +
+      '</div></nav>' +
+    '</div>' +
+    botao('/baixar', 'Baixar o app', 'btn--accent btn--app', ' id="nav-baixar"') +
   '</div></header>';
 }
 
@@ -439,15 +466,11 @@ export function layoutRestaurante(r, c, d) {
     ? secao('', 'Por perto', 'Também em ' + d.bairro, pilulas(d.vizinhos))
     : '';
 
-  return navHome() +
+  return navHome(abas) +
   '<main id="top">' +
     capa(r, c, d, fotos) +
     '<div class="sheet fx-folha">' +
       '<img src="/assets/img/seal.svg" alt="" class="sheet__seal" aria-hidden="true" width="80" height="80" decoding="async" />' +
-      '<nav class="fx-abas" aria-label="Seções"><div class="fx-abas__in">' +
-        abas.map(([id, t]) => '<a href="#' + id + '">' + esc(t) + '</a>').join('') +
-        '<i class="fx-abas__barra" aria-hidden="true"></i>' +
-      '</div></nav>' +
       '<div class="wrap fx-grade">' +
         '<div class="fx-col">' +
           visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink, d.externas) + galeria(fotos, r.name) +
@@ -523,7 +546,19 @@ export const JS_FICHA = `
    * Roda ANTES do js/sello.js (que é defer): o texto do botão é encurtado no
    * celular antes de ele ser quebrado nas letras que viram. */
   var barraApp = $('#fx-barra-app'), baixar = $('#fx-baixar'), tick = false, noFim = false;
-  if (baixar && window.matchMedia && matchMedia('(max-width: 900px)').matches) $('.btn__t', baixar).textContent = 'Baixar';
+  if (window.matchMedia && matchMedia('(max-width: 900px)').matches) {
+    [baixar, $('#nav-baixar')].forEach(function (b) { if (b) $('.btn__t', b).textContent = 'Baixar'; });
+  }
+
+  /* Menu "Explorar": no mouse abre no hover (CSS); no toque, abre e fecha no
+   * clique, e fecha ao tocar fora ou com Esc. */
+  var mais = $('.nav__mais'), burger = $('.nav__burger');
+  if (mais && burger) {
+    var abrirMenu = function (abre) { mais.classList.toggle('is-open', abre); burger.setAttribute('aria-expanded', abre ? 'true' : 'false'); };
+    burger.addEventListener('click', function (e) { e.stopPropagation(); abrirMenu(!mais.classList.contains('is-open')); });
+    document.addEventListener('click', function (e) { if (!mais.contains(e.target)) abrirMenu(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') abrirMenu(false); });
+  }
   function rolou() {
     tick = false;
     if (barraApp) barraApp.classList.toggle('visivel', !noFim && (window.scrollY || 0) > (hero ? hero.offsetHeight * 0.35 : 300));
@@ -686,23 +721,70 @@ export const CSS_FICHA = `
     font-size:10.5px; padding:3px 9px; border-radius:999px; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 
 
-  /* ── abas: pílula de vidro presa logo abaixo da barra da home ── */
-  .fx-abas { position:sticky; top:84px; z-index:40; display:flex; justify-content:center; padding:44px var(--pad) 0; pointer-events:none; }
-  .fx-abas__in { pointer-events:auto; position:relative; display:flex; gap:4px; max-width:100%; overflow-x:auto; scrollbar-width:none;
-    padding:6px; border-radius:999px; background:rgba(255,255,255,.78); backdrop-filter:blur(20px) saturate(170%); -webkit-backdrop-filter:blur(20px) saturate(170%);
-    box-shadow:0 10px 34px -20px rgba(13,17,27,.35), inset 0 0 0 1px rgba(13,17,27,.06); }
+  /* ── barra da ficha: logo | seções | menu | baixar ──
+   * Sobre a capa ela é transparente (texto branco, trilho de vidro escuro);
+   * quando a folha branca chega, a barra vira o vidro claro da home. */
+  .nav--ficha .nav__inner { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:12px; }
+  .nav--ficha .fx-abas { justify-self:center; min-width:0; max-width:100%; }
+  .fx-abas__in { position:relative; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding:4px; border-radius:999px;
+    background:rgba(13,17,27,.22); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); transition:background .35s var(--ease), box-shadow .35s var(--ease); }
   .fx-abas__in::-webkit-scrollbar { display:none; }
-  .fx-abas a { position:relative; z-index:1; flex:none; padding:10px 18px; border-radius:999px; font-size:.92rem; font-weight:600; color:var(--muted);
-    transition:color .4s var(--ease); }
-  .fx-abas a:hover { color:var(--ink); }
-  .fx-abas a.ativo { color:#fff; }
-  .fx-abas__barra { position:absolute; left:0; top:6px; bottom:6px; width:0; border-radius:999px; background:var(--red);
+  .nav.is-scrolled .fx-abas__in { background:rgba(13,17,27,.045); box-shadow:inset 0 0 0 1px rgba(13,17,27,.05); backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .fx-abas a { position:relative; z-index:1; flex:none; padding:9px 16px; border-radius:999px; font-size:.88rem; font-weight:600; white-space:nowrap;
+    color:rgba(255,255,255,.86); transition:color .4s var(--ease); }
+  .fx-abas a:hover { color:#fff; }
+  .nav.is-scrolled .fx-abas a { color:var(--muted); }
+  .nav.is-scrolled .fx-abas a:hover { color:var(--ink); }
+  .fx-abas a.ativo, .nav.is-scrolled .fx-abas a.ativo { color:#fff; }
+  .fx-abas__barra { position:absolute; left:0; top:4px; bottom:4px; width:0; border-radius:999px; background:var(--red);
     box-shadow:0 8px 20px -10px rgba(227,15,47,.8); transition:transform .6s var(--ease), width .6s var(--ease); }
+
+  /* hambúrguer: hover troca a cor e alinha as linhas; aberto no toque vira X */
+  .nav__mais { position:relative; }
+  .nav__burger { display:grid; place-content:center; gap:4px; width:44px; height:44px; padding:0; border:0; border-radius:50%; cursor:pointer;
+    background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+    transition:background .3s var(--ease), box-shadow .3s var(--ease), transform .3s var(--ease); }
+  .nav__burger i { display:block; width:18px; height:2px; border-radius:2px; background:#fff; justify-self:end;
+    transition:transform .45s var(--ease), width .45s var(--ease), opacity .3s var(--ease), background .3s var(--ease); }
+  .nav__burger i:nth-child(2) { width:12px; }
+  .nav.is-scrolled .nav__burger { background:var(--light); box-shadow:none; }
+  .nav.is-scrolled .nav__burger i { background:var(--ink); }
+  .nav__burger:active { transform:scale(.94); }
+  .nav__mais.is-open .nav__burger, .nav.is-scrolled .nav__mais.is-open .nav__burger { background:var(--red); box-shadow:none; }
+  .nav__mais.is-open .nav__burger i { background:#fff; }
+  .nav__mais.is-open .nav__burger i:nth-child(1) { transform:translateY(6px) rotate(45deg); }
+  .nav__mais.is-open .nav__burger i:nth-child(2) { opacity:0; transform:scaleX(0); }
+  .nav__mais.is-open .nav__burger i:nth-child(3) { transform:translateY(-6px) rotate(-45deg); }
+
+  /* o painel: padding-top faz a ponte do hover entre o botão e o cartão */
+  .nav__drop { position:absolute; right:-6px; top:100%; width:320px; padding-top:14px; visibility:hidden; opacity:0;
+    transform:translateY(-8px) scale(.98); transform-origin:top right;
+    transition:opacity .3s var(--ease), transform .45s var(--ease), visibility 0s linear .45s; }
+  .nav__drop-in { padding:8px; border-radius:22px; background:#fff; box-shadow:0 30px 60px -24px rgba(13,17,27,.45), inset 0 0 0 1px rgba(13,17,27,.06); }
+  .nav__drop a { position:relative; display:grid; gap:2px; padding:14px 48px 14px 16px; border-radius:16px; color:var(--ink);
+    opacity:0; transform:translateY(6px); transition:background .3s var(--ease), opacity .35s var(--ease), transform .5s var(--ease); }
+  .nav__drop a b { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.3rem; line-height:1.2; padding-top:.04em; }
+  .nav__drop a span { font-size:.85rem; color:var(--muted); }
+  .nav__drop a::after { content:"→"; position:absolute; right:18px; top:50%; color:var(--red); font-size:1.15rem; font-weight:700;
+    opacity:0; transform:translate(-8px,-50%); transition:opacity .3s var(--ease), transform .4s var(--ease); }
+  .nav__drop a:hover, .nav__drop a:focus-visible { background:var(--pink); }
+  .nav__drop a:hover::after, .nav__drop a:focus-visible::after { opacity:1; transform:translate(0,-50%); }
+  .nav__mais.is-open .nav__drop, .nav__mais:focus-within .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+  .nav__mais.is-open .nav__drop a, .nav__mais:focus-within .nav__drop a { opacity:1; transform:none; }
+  @media (hover:hover) {
+    .nav__mais:hover .nav__burger { background:var(--red); box-shadow:none; }
+    .nav__mais:hover .nav__burger i { background:#fff; width:18px; }
+    .nav__mais:hover .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+    .nav__mais:hover .nav__drop a { opacity:1; transform:none; }
+  }
+  .nav__drop a:nth-child(2) { transition-delay:0s, .05s, .05s; }
+  .nav__drop a:nth-child(3) { transition-delay:0s, .1s, .1s; }
 
   /* ── grade ── */
   .fx-grade { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:clamp(40px,5vw,72px); align-items:start; }
   .fx-col { min-width:0; }
-  .fx-sec { padding:clamp(48px,6vw,72px) 0 8px; scroll-margin-top:160px; }
+  .fx-sec { padding:clamp(48px,6vw,72px) 0 8px; scroll-margin-top:110px; }
   .fx-sec + .fx-sec { border-top:1px solid var(--line); }
   .fx-h2 { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(2rem,3.6vw,3rem); line-height:1.18;
     letter-spacing:.012em; color:var(--ink); margin:0 0 clamp(18px,2vw,26px); }
@@ -929,7 +1011,11 @@ export const CSS_FICHA = `
     .fx-grade { grid-template-columns:1fr; gap:0; }
     .fx-lado { position:static; order:-1; }
     .fx-aval { grid-template-columns:1fr; }
-    .fx-abas { top:76px; padding-top:40px; justify-content:flex-start; }
+    .nav--ficha .nav__inner { grid-template-columns:auto 1fr auto auto; row-gap:8px; border-radius:26px; padding:8px 8px 8px 16px; }
+    .nav--ficha .fx-abas { grid-row:2; grid-column:1 / -1; justify-self:stretch; margin-left:-8px; }
+    .nav--ficha .nav__brand { grid-column:1; }
+    .nav--ficha .nav__mais { grid-column:3; }
+    .fx-sec { scroll-margin-top:150px; }
   }
   @media (max-width:640px) {
     .fx-titulo { font-size:clamp(2.5rem,12vw,3.4rem); }
@@ -938,7 +1024,7 @@ export const CSS_FICHA = `
     .fx-bento { grid-template-columns:repeat(2,1fr); grid-auto-rows:130px; }
     .fx-take__aspas { font-size:130px; top:-20px; }
     .fx-lb__nav { display:none !important; }
-    .fx-abas { padding-inline:12px; }
+    .nav__drop { width:min(300px, calc(100vw - 32px)); right:-56px; }
     .fx-linha { flex-direction:column; align-items:flex-start; gap:4px; }
     .fx-linha__sep { display:none; }
   }
