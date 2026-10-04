@@ -595,6 +595,10 @@ export const JS_FICHA = `
   }
   if (abas.length) {
     requestAnimationFrame(function () { marcar(abas[0]); });
+    // A largura da aba muda quando a fonte chega: remedir a pílula depois.
+    var remedir = function () { marcar($('.fx-abas a.ativo') || abas[0]); };
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(remedir);
+    window.addEventListener('load', remedir);
     if ('IntersectionObserver' in window) {
       var ioA = new IntersectionObserver(function (es) {
         es.forEach(function (e) {
@@ -1006,16 +1010,26 @@ export const CSS_FICHA = `
   .fx-lb__nav--esq { left:18px; } .fx-lb__nav--dir { right:18px; }
   .fx-lb__cont { position:absolute; top:30px; left:0; right:0; text-align:center; color:rgba(255,255,255,.7); font-size:13px; font-weight:600; pointer-events:none; }
 
+  /* Seis seções não cabem no meio da barra abaixo de ~1120px: descem para
+   * uma segunda linha, que rola de lado (a aba ativa é trazida para a vista). */
+  @media (max-width:1120px) {
+    .nav--ficha .nav__inner { grid-template-columns:auto 1fr auto auto; row-gap:8px; border-radius:26px; padding:8px 8px 8px 16px; }
+    .nav--ficha .fx-abas { grid-row:2; grid-column:1 / -1; justify-self:start; margin-left:-8px; }
+    .nav--ficha .nav__brand { grid-column:1; }
+    .nav--ficha .nav__mais { grid-column:3; }
+    .nav--ficha #nav-baixar { grid-column:4; }
+    /* a barra tem duas linhas aqui: o texto da capa começa abaixo dela */
+    .fx-hero .hero__content { padding-top:172px; }
+    .fx-sec { scroll-margin-top:150px; }
+  }
+  @media (max-width:640px) {
+    .nav--ficha .nav__inner .btn--app { min-width:0; height:44px; padding:0 20px; font-size:18px; }
+  }
   @media (max-width:1060px) { .fx-grade { grid-template-columns:minmax(0,1fr) 320px; } }
   @media (max-width:900px) {
     .fx-grade { grid-template-columns:1fr; gap:0; }
     .fx-lado { position:static; order:-1; }
     .fx-aval { grid-template-columns:1fr; }
-    .nav--ficha .nav__inner { grid-template-columns:auto 1fr auto auto; row-gap:8px; border-radius:26px; padding:8px 8px 8px 16px; }
-    .nav--ficha .fx-abas { grid-row:2; grid-column:1 / -1; justify-self:stretch; margin-left:-8px; }
-    .nav--ficha .nav__brand { grid-column:1; }
-    .nav--ficha .nav__mais { grid-column:3; }
-    .fx-sec { scroll-margin-top:150px; }
   }
   @media (max-width:640px) {
     .fx-titulo { font-size:clamp(2.5rem,12vw,3.4rem); }
@@ -1024,7 +1038,7 @@ export const CSS_FICHA = `
     .fx-bento { grid-template-columns:repeat(2,1fr); grid-auto-rows:130px; }
     .fx-take__aspas { font-size:130px; top:-20px; }
     .fx-lb__nav { display:none !important; }
-    .nav__drop { width:min(300px, calc(100vw - 32px)); right:-56px; }
+    .nav__drop { width:min(300px, calc(100vw - 32px)); right:-104px; }
     .fx-linha { flex-direction:column; align-items:flex-start; gap:4px; }
     .fx-linha__sep { display:none; }
   }
