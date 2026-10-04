@@ -312,6 +312,18 @@ function mapa(r, c) {
     rotas ? '<div class="fx-sec__acao" data-reveal data-delay="1">' + botao(rotas, 'Como chegar', 'btn--dark', ' rel="nofollow noopener" target="_blank"') + '</div>' : '');
 }
 
+/** "Perguntas sobre {lugar}": as respostas que a busca com complemento quer,
+ *  em acordeão (a primeira aberta). O mesmo conteúdo vai no FAQPage. */
+function perguntas(r, lista, titulo) {
+  if (!(lista || []).length) return '';
+  return secao('perguntas', 'Perguntas', titulo || 'Perguntas', '<div class="fx-faq">' +
+    lista.map((p, i) =>
+      '<details class="fx-faq__item"' + (i === 0 ? ' open' : '') + '>' +
+        '<summary><h3>' + esc(p.q) + '</h3><span class="fx-faq__mais" aria-hidden="true"></span></summary>' +
+        '<p>' + esc(p.a) + '</p>' +
+      '</details>').join('') + '</div>');
+}
+
 function lateral(r, c, d) {
   const pg = (r.payment_methods || c.payment_methods || []).map((p) => PAGAMENTO[p]).filter(Boolean);
   const periodos = (r.hours_periods || c.hours_periods || []).filter((p) => p && p.open && p.close);
@@ -439,7 +451,7 @@ export function layoutRestaurante(r, c, d) {
       '<div class="wrap fx-grade">' +
         '<div class="fx-col">' +
           visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink, d.externas) + galeria(fotos, r.name) +
-          horario(c) + mapa(r, c) + guias + vizinhos +
+          horario(c) + mapa(r, c) + perguntas(r, d.perguntas, d.tituloPerguntas) + guias + vizinhos +
           ((d.explorar || []).length ? secao('', 'Continue', 'Explore', pilulas(d.explorar)) : '') +
         '</div>' +
         lateral(r, c, d) +
@@ -812,6 +824,23 @@ export const CSS_FICHA = `
   .fx-chegar { list-style:none; padding:0; margin:16px 0 0; display:grid; gap:8px; }
   .fx-chegar li { display:flex; gap:10px; align-items:center; color:var(--muted); }
   .fx-chegar .fx-ic { width:18px; height:18px; color:var(--red); }
+
+  /* perguntas (acordeão) */
+  .fx-faq { display:grid; gap:10px; }
+  .fx-faq__item { border-radius:18px; background:var(--light); transition:background .3s var(--ease); }
+  .fx-faq__item[open] { background:var(--pink); }
+  .fx-faq__item summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px; }
+  .fx-faq__item summary::-webkit-details-marker { display:none; }
+  .fx-faq__item h3 { margin:0; font-size:1rem; font-weight:700; color:var(--ink); }
+  .fx-faq__mais { position:relative; flex:none; width:28px; height:28px; border-radius:50%; background:#fff; transition:transform .4s var(--ease), background .3s var(--ease); }
+  .fx-faq__mais::before, .fx-faq__mais::after { content:""; position:absolute; left:50%; top:50%; width:12px; height:2px; margin:-1px 0 0 -6px; border-radius:2px; background:var(--red); }
+  .fx-faq__mais::after { transform:rotate(90deg); transition:transform .4s var(--ease); }
+  .fx-faq__item[open] .fx-faq__mais { background:var(--red); }
+  .fx-faq__item[open] .fx-faq__mais::before, .fx-faq__item[open] .fx-faq__mais::after { background:#fff; }
+  .fx-faq__item[open] .fx-faq__mais::after { transform:rotate(0); }
+  .fx-faq__item p { margin:0 !important; padding:0 18px 18px; color:var(--ink) !important; }
+  .fx-faq__item[open] p { animation:fxFaq .45s var(--ease); }
+  @keyframes fxFaq { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
 
   /* guias e pílulas (peças da home, só ajustes) */
   .fx-guias { grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }

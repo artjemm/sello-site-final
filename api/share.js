@@ -366,6 +366,20 @@ function resumo(r, c, d) {
   return out.length > 1 ? '<section class="resumo"><h2>Em resumo</h2><p>' + esc(out.join(' ')) + '</p></section>' : '';
 }
 
+/** 'A Casa do Porco Bar' + 'em' -> 'na Casa do Porco Bar'; 'Evvai' + 'de' -> 'do Evvai'.
+ *  Nome sem artigo é tratado como masculino (o restaurante). */
+function comArtigo(nome, prep) {
+  const m = /^(O|A|Os|As)\s+(.+)$/.exec(nome);
+  const art = m ? m[1].toLowerCase() : 'o';
+  const resto = m ? m[2] : nome;
+  const formas = {
+    '': { o: 'o', a: 'a', os: 'os', as: 'as' },
+    em: { o: 'no', a: 'na', os: 'nos', as: 'nas' },
+    de: { o: 'do', a: 'da', os: 'dos', as: 'das' },
+  };
+  return formas[prep][art] + ' ' + resto;
+}
+
 function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
   const c = r.catalog_json || {};
   const cozinha = c.cuisine || c.sello_primary_category || '';
@@ -375,19 +389,34 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
   const nc = notas.get(r.slug) || null;
   const path = '/r/' + (r.share_slug || r.slug);
 
-  /* O título é a linha azul do Google. "Confira o X" não é buscado por
-   * ninguém; "X — Japonesa em Bela Vista" carrega o nome, a cozinha e o
-   * bairro, que é exatamente como a pessoa procura. */
-  const partes = [cozinha, bairro ? 'em ' + bairro : ''].filter(Boolean).join(' ');
-  const title = partes ? r.name + ' — ' + partes + ' | Sello' : noSello(r.name);
+  /* O título é a linha azul do Google. Para o nome puro ("evvai") o topo é do
+   * próprio restaurante — site, Instagram, Maps —, e disputar isso não é
+   * realista. Onde a ficha ganha é na busca com complemento: "casa do porco o
+   * que pedir", "evvai abre domingo", "z deli nota". Por isso o título fala
+   * essa língua (out/2026; antes era "X — Japonesa em Bela Vista", e bairro e
+   * cozinha ficaram na descrição e nas páginas de bairro/cozinha). */
+  const title = r.name + ': o que pedir, nota e horário | Sello';
 
-  /* A descrição precisa ser única por restaurante: é ela que aparece embaixo
-   * do título na busca, e era ela a frase repetida em todas as páginas. */
-  const description =
-    c.hook ||
-    c.description ||
-    c.sello_take_body ||
-    r.name + (bairro ? ' — ' + bairro : '') + '. Veja avaliação, pratos e horários no Sello.';
+  /* A descrição aparece embaixo do título na busca: a frase da casa e, logo
+   * depois, os fatos que fazem clicar — nota, o que pedir, onde e quanto.
+   * Cortada em frase inteira perto de 160 caracteres (o Google corta o resto). */
+  const pratosTop = ((c.dishes && c.dishes.must_order) || []).filter((x) => x && x.name).slice(0, 2).map((x) => x.name);
+  const frasesDesc = [
+    c.hook || c.description || '',
+    // Com 1 ou 2 votos a nota é ruído no resultado da busca (na página ela
+    // aparece com a contagem, que dá o contexto).
+    nc && nc.votos >= 3 ? 'Nota ' + fmtNota(nc.media) + ' na comunidade do Sello.' : '',
+    pratosTop.length ? 'Peça ' + juntar(pratosTop) + '.' : '',
+    [cozinha, bairro ? 'em ' + bairro : '', preco ? '(' + preco + ')' : ''].filter(Boolean).join(' ') + '.',
+  ].filter((f) => f && f !== '.');
+  let description = '';
+  for (const f of frasesDesc) {
+    const prox = description ? description + ' ' + f : f;
+    // Frase que não cabe é pulada — a próxima (mais curta) ainda pode caber.
+    if (prox.length > 165 && description) continue;
+    description = prox;
+  }
+  if (!description) description = r.name + (bairro ? ' — ' + bairro : '') + '. Veja avaliação, pratos e horários no Sello.';
 
   const horarios = (c.hours || [])
     .filter((h) => h && h.label)
@@ -434,6 +463,44 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
 
   const resumoHtml = resumo(r, c, { bairro, cozinha, preco, nc, cidade: viz.cidade, guias: viz.guias });
 
+  /* Perguntas sobre o lugar — as buscas com complemento, respondidas com o
+   * dado da ficha (nada inventado: sem o dado, a pergunta não entra). Vão na
+   * página (bloco "Perguntas") e no JSON-LD FAQPage. */
+  const externas = fontesExternas(r, c);
+  const tituloPerguntas = 'Perguntas sobre ' + comArtigo(r.name, '');
+  const perguntas = [];
+  const todosPratos = ((c.dishes && c.dishes.must_order) || []).filter((x) => x && x.name).slice(0, 3).map((x) => x.name);
+  if (todosPratos.length) {
+    perguntas.push({ q: 'O que pedir ' + comArtigo(r.name, 'em') + '?', a: 'Os pratos mais citados por quem foi: ' + juntar(todosPratos) + '.' });
+  }
+  const domingo = (c.hours || []).find((h) => h && h.label === 'Domingo');
+  if (domingo && domingo.value) {
+    perguntas.push({
+      q: r.name + ' abre no domingo?',
+      a: /fechado/i.test(domingo.value)
+        ? 'Não. Pelo horário publicado pela casa, ' + comArtigo(r.name, '') + ' não abre aos domingos.'
+        : 'Sim, das ' + domingo.value.replace(/\s*-\s*/g, ' às ').replace(/\s*·\s*/g, ' e das ') + ', pelo horário publicado pela casa.',
+    });
+  }
+  if (preco) {
+    const nivel = { 1: 'econômica', 2: 'moderada', 3: 'alta', 4: 'muito alta' }[preco.length];
+    perguntas.push({ q: 'Quanto custa comer ' + comArtigo(r.name, 'em') + '?', a: 'A faixa de preço é ' + preco + ' (' + nivel + '), numa escala de $ a $$$$.' });
+  }
+  if (r.address) {
+    const temBairro = bairro && r.address.toLowerCase().includes(bairro.toLowerCase());
+    perguntas.push({ q: 'Onde fica ' + comArtigo(r.name, '') + '?', a: r.address + (bairro && !temBairro ? ' — ' + bairro : '') + '.' });
+  }
+  const google = externas.find((f) => f.id === 'google' && f.nota != null);
+  if (nc || google) {
+    perguntas.push({
+      q: 'Qual a nota ' + comArtigo(r.name, 'de') + '?',
+      a: [
+        nc ? fmtNota(nc.media) + ' de 10 na comunidade do Sello, com ' + nc.votos + (nc.votos === 1 ? ' avaliação' : ' avaliações') + '.' : '',
+        google ? 'No Google Maps, ' + String(google.nota).replace('.', ',') + ' de 5' + (google.total ? ' (' + google.total.toLocaleString('pt-BR') + ' avaliações)' : '') + '.' : '',
+      ].filter(Boolean).join(' '),
+    });
+  }
+
   /* Posição pela nota da comunidade (ver linhaPosicao em ficha.js). No bairro
    * quando ele tem ao menos 5 lugares na conta — "Nº 1 de 2" não diz nada —,
    * senão na cidade. */
@@ -459,8 +526,10 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
   trilhaFicha.push({ name: r.name });
   const main = layoutRestaurante(r, c, {
     capa,
+    perguntas,
+    tituloPerguntas,
     cozinha, bairro, nc, posicao, cidade: viz.cidade,
-    externas: fontesExternas(r, c),
+    externas,
     deepLink: 'sello://restaurant/' + r.slug,
     appStore: APP_STORE, playStore: PLAY_STORE,
     guias: viz.guias || [],
@@ -569,7 +638,21 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
     trilha: trilha,
     body: body,
     main: main,
-    jsonld: [jsonld, breadcrumbLd(trilha)],
+    jsonld: [
+      jsonld,
+      breadcrumbLd(trilha),
+      perguntas.length
+        ? {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: perguntas.map((p) => ({
+              '@type': 'Question',
+              name: p.q,
+              acceptedAnswer: { '@type': 'Answer', text: p.a },
+            })),
+          }
+        : null,
+    ].filter(Boolean),
   };
 }
 
