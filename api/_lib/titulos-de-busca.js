@@ -1,6 +1,10 @@
 /**
  * Título de BUSCA de cada guia.
  *
+ * Out/2026: os títulos de cozinha e ocasião seguem a pesquisa de palavras-chave
+ * (docs/marketing/seo/palavras-chave-comida-sp.md no repo do app) — "churrascarias
+ * em sp" tem 18 mil buscas/mês e "casas de carne" quase nenhuma.
+ *
  * Os guias têm nome editorial — "Não é miojo", "Nonna aprovaria", "Cru e
  * preciso". São bons e é assim que a marca fala. Só que ninguém procura por
  * eles no Google: quem quer lámen digita "melhor lámen são paulo".
@@ -37,11 +41,11 @@ export const TITULOS_DE_BUSCA = {
   'cru-e-preciso':                   'Sushi em SP: os melhores de São Paulo',
   'nas-maos-do-chef':                'Os melhores omakases de São Paulo',
   'kampai':                          'Os melhores izakayas de São Paulo',
-  'no-ponto-certo':                  'As melhores casas de carne de São Paulo',
+  'no-ponto-certo':                  'Churrascarias e casas de carne em SP: as melhores',
   'massa-critica':                   'Pizzarias em SP: as melhores pizzas de São Paulo',
-  'doce-final':                      'As melhores sobremesas de São Paulo',
-  'a-fila-vale':                     'As melhores padarias e confeitarias de São Paulo',
-  'mais-que-um-cafe':                'Os melhores cafés de São Paulo',
+  'doce-final':                      'Docerias e sobremesas em SP: as melhores de São Paulo',
+  'a-fila-vale':                     'Padarias em SP: as melhores padarias e confeitarias',
+  'mais-que-um-cafe':                'Cafeterias em SP: os melhores cafés de São Paulo',
   'entre-duas-fatias':               'Os melhores sanduíches de São Paulo',
 
   // ── recorte geográfico ────────────────────────────────────────────────────
@@ -52,11 +56,11 @@ export const TITULOS_DE_BUSCA = {
   'o-lado-norte-da-mesa':            'Onde comer na Zona Norte de São Paulo',
 
   // ── ocasião: como as pessoas realmente descrevem o que querem ─────────────
-  'mesa-para-dois':                  'Restaurantes para jantar romântico em São Paulo',
+  'mesa-para-dois':                  'Restaurantes românticos em SP: jantar a dois',
   'domingo-em-familia':              'Restaurantes para ir em família em São Paulo',
   'almoco-que-resolve':              'Onde almoçar bem em São Paulo',
   'depois-das-dez':                  'Onde comer tarde da noite em São Paulo',
-  'tem-motivo-tem-mesa':             'Restaurantes para comemorar em São Paulo',
+  'tem-motivo-tem-mesa':             'Onde comemorar aniversário em SP: restaurantes',
   'quando-nao-da-pra-errar':         'Restaurantes para impressionar em São Paulo',
   'primeira-parada':                 'Onde comer em São Paulo: guia para quem visita',
   'balcao-preferencial':             'Restaurantes de balcão em São Paulo',
@@ -68,7 +72,7 @@ export const TITULOS_DE_BUSCA = {
   // ── REVER: conceito editorial, sem assunto que o dado revele ──────────────
   // A proposta abaixo é chute educado. Quem escreveu o guia sabe o que ele
   // responde melhor do que a estatística das cozinhas — vale reescrever.
-  'top-25-melhores':                 'Os melhores restaurantes de São Paulo',
+  'top-25-melhores':                 'Melhores restaurantes em SP: os 25 do Sello',
   'onde-comer-sem-errar':            'Restaurantes bons de verdade em São Paulo',
   'a-proxima-reserva':               'Restaurantes para reservar em São Paulo',
   'so-funciona-em-sao-paulo':        'Restaurantes que só existem em São Paulo',

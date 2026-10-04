@@ -17,7 +17,7 @@
 
 import { TITULOS_DE_BUSCA } from './_lib/titulos-de-busca.js';
 import { cartao, CSS_CARTAO } from './_lib/cartao.js';
-import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo, emBairro } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { notasComunidade, fmtNota } from './_lib/notas.js';
 import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './_lib/ficha.js';
@@ -299,7 +299,7 @@ async function vizinhanca(r) {
   const ocasioes = bairro
     ? Object.keys(OCASIOES)
         .filter((o) => atende(o, r) && oc.existeBairro(o, bairro))
-        .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' em ' + bairro) }))
+        .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' ' + emBairro(bairro)) }))
     : [];
 
   return {
@@ -411,7 +411,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
     // aparece com a contagem, que dá o contexto).
     nc && nc.votos >= 3 ? 'Nota ' + fmtNota(nc.media) + ' na comunidade do Sello.' : '',
     pratosTop.length ? 'Peça ' + juntar(pratosTop) + '.' : '',
-    [cozinha, bairro ? 'em ' + bairro : '', preco ? '(' + preco + ')' : ''].filter(Boolean).join(' ') + '.',
+    [cozinha, bairro ? emBairro(bairro) : '', preco ? '(' + preco + ')' : ''].filter(Boolean).join(' ') + '.',
   ].filter((f) => f && f !== '.');
   let description = '';
   for (const f of frasesDesc) {
@@ -517,7 +517,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
   const noBairro = ranking(viz.slugsDoBairro || []);
   const iB = noBairro.findIndex(([s]) => s === r.slug);
   if (iB >= 0 && noBairro.length >= 5) {
-    posicao = { n: iB + 1, total: noBairro.length, onde: 'em ' + bairro, href: viz.paginaBairro || '' };
+    posicao = { n: iB + 1, total: noBairro.length, onde: emBairro(bairro), href: viz.paginaBairro || '' };
   } else {
     const naCidade = ranking(viz.slugsAtivos || []);
     const iC = naCidade.findIndex(([s]) => s === r.slug);
@@ -547,7 +547,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
       return { href: '/r/' + (v.share_slug || v.slug), txt: v.name, nota: vn ? fmtNota(vn.media) : '' };
     }),
     explorar: [
-      viz.paginaBairro ? { href: viz.paginaBairro, txt: 'Onde comer em ' + bairro } : null,
+      viz.paginaBairro ? { href: viz.paginaBairro, txt: 'Onde comer ' + emBairro(bairro) } : null,
       ...(viz.ocasioes || []),
       viz.paginaCozinha && viz.pluralCozinha ? { href: viz.paginaCozinha, txt: 'Mais ' + viz.pluralCozinha } : null,
       { href: '/guias', txt: 'Todos os guias do Sello' },

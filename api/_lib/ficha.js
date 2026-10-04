@@ -26,6 +26,7 @@ import { esc } from './cartao.js';
 import { fmtNota } from './notas.js';
 import { fmtNotaFonte } from './avaliacoes-externas.js';
 import { PRATOS, pratoDoNome, destinoPrato } from './pratos.js';
+import { emBairro } from './taxonomia.js';
 
 /* Versões dos arquivos da home — as mesmas que o index.html pede, para o
  * navegador reaproveitar o cache de quem veio de lá. */
@@ -482,7 +483,7 @@ export function layoutRestaurante(r, c, d) {
           '<span class="xg__desc">Guia do Sello</span></a></li>').join('') + '</ul>')
     : '';
   const vizinhos = (d.vizinhos || []).length && d.bairro
-    ? secao('', 'Por perto', 'Também em ' + d.bairro, pilulas(d.vizinhos))
+    ? secao('', 'Por perto', 'Também ' + emBairro(d.bairro), pilulas(d.vizinhos))
     : '';
 
   return navHome(abas) +

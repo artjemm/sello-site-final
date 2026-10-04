@@ -26,7 +26,7 @@
  *   - Guia usa `lists.updated_at`, que só se move quando o guia é editado.
  */
 
-import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo, cozinhasAlvo, bairrosAlvo } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { PRATOS, MINIMO_PRATO, pratosQueCasam } from './_lib/pratos.js';
 
@@ -139,9 +139,12 @@ export default async function handler(req, res) {
     };
     for (const r of rest) {
       const b = r.neighborhood, c = r.cuisine, d = dataEditorial(r);
-      if (b) somar(porBairro, b, d);
-      if (c) somar(porCozinha, c, d);
-      if (b && c) somar(porCombo, c + '|' + b, d);
+      // Mesma conta da rota: regiões (REGIOES) e grupos de cozinha (GRUPOS_COZINHA).
+      const bs = b ? bairrosAlvo(b) : [];
+      const cs = c && COZINHAS[c] ? cozinhasAlvo(c) : (c ? [c] : []);
+      for (const x of bs) somar(porBairro, x, d);
+      for (const y of cs) somar(porCozinha, y, d);
+      for (const y of cs) for (const x of bs) somar(porCombo, y + '|' + x, d);
     }
     for (const [b, e] of Object.entries(porBairro)) {
       if (e.n >= MINIMO.bairro) {

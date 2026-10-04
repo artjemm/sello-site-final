@@ -115,6 +115,12 @@ export const PRATOS = {
     titulo: (o) => 'Onde comer cheesecake' + o, busca: (o) => 'Cheesecake' + o,
     frase: 'têm cheesecake entre os pratos que a curadoria manda pedir',
   },
+  // "sorvete são paulo" e "sorveterias são paulo": 3.600/mês cada.
+  sorvete: {
+    nome: 'Sorvete e gelato', re: /sorvete|gelato|gelatos|gelateria/,
+    titulo: (o) => 'Onde tomar sorvete e gelato' + o, busca: (o) => 'Sorvete e gelato' + o,
+    frase: 'têm sorvete ou gelato entre os pratos que a curadoria manda pedir',
+  },
   'bolinho-de-bacalhau': {
     nome: 'Bolinho de bacalhau', re: /bolinho.*bacalhau|bacalhau.*bolinho/,
     titulo: (o) => 'Onde comer bolinho de bacalhau' + o, busca: (o) => 'Bolinho de bacalhau' + o,

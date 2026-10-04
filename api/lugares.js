@@ -28,6 +28,7 @@
 
 import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
+  membrosCozinha, cozinhasAlvo, membrosBairro, bairrosAlvo, filtroIn, REGIOES, GRUPOS_COZINHA, emBairro,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { PRATOS, MINIMO_PRATO, pratosQueCasam, contarPratos, destinoPrato } from './_lib/pratos.js';
@@ -75,18 +76,23 @@ async function montarIndice() {
   const nBairro = {}, nCozinha = {}, nCombo = {}, soma = {};
   for (const r of rows) {
     const b = r.neighborhood, c = r.cuisine;
-    if (b) {
-      bairros.set(aSlug(b), b);
-      nBairro[b] = (nBairro[b] || 0) + 1;
+    // Uma casa conta no bairro dela e nas regiões que o contêm (REGIOES), e na
+    // cozinha dela e nos grupos que a contêm (GRUPOS_COZINHA).
+    const bs = b ? bairrosAlvo(b) : [];
+    for (const x of bs) {
+      bairros.set(aSlug(x), x);
+      nBairro[x] = (nBairro[x] || 0) + 1;
       if (r.lat != null && r.lng != null) {
-        const s = soma[b] || (soma[b] = { lat: 0, lng: 0, n: 0 });
+        const s = soma[x] || (soma[x] = { lat: 0, lng: 0, n: 0 });
         s.lat += Number(r.lat); s.lng += Number(r.lng); s.n += 1;
       }
     }
     if (c && COZINHAS[c]) {
-      cozinhas.set(COZINHAS[c].slug, c);
-      nCozinha[c] = (nCozinha[c] || 0) + 1;
-      if (b) nCombo[c + '|' + b] = (nCombo[c + '|' + b] || 0) + 1;
+      for (const y of cozinhasAlvo(c)) {
+        cozinhas.set(COZINHAS[y].slug, y);
+        nCozinha[y] = (nCozinha[y] || 0) + 1;
+        for (const x of bs) nCombo[y + '|' + x] = (nCombo[y + '|' + x] || 0) + 1;
+      }
     }
   }
   const centro = {};
@@ -343,9 +349,9 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
   if (!linhas.length) return erro404(res);
 
   const cidade = cidadeDasLinhas(linhas, mapaDeCidades(linhasCidades));
-  const ondeBairro = bairro ? ' em ' + bairro : '';
+  const ondeBairro = bairro ? ' ' + emBairro(bairro) : '';
   const ondeLead = bairro
-    ? ' em ' + bairro + (cidade ? ', ' + cidade.nome + ',' : '')
+    ? ' ' + emBairro(bairro) + (cidade ? ', ' + cidade.nome + ',' : '')
     : (cidade ? ' em ' + cidade.nome : '');
   const ufTitulo = cidade && cidade.uf ? (bairro ? ', ' : ' em ') + cidade.uf : '';
   const naCidadeDesc = cidade ? (bairro ? ', ' : ' em ') + cidade.nome : '';
@@ -401,19 +407,19 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
   const blocos = [];
   const todosOsGuias = { href: '/guias', txt: 'Todos os guias e bairros' };
   if (bairro) {
-    blocos.push(pilulas('Outras ocasiões em ' + bairro, Object.keys(OCASIOES)
+    blocos.push(pilulas('Outras ocasiões ' + emBairro(bairro), Object.keys(OCASIOES)
       .filter((x) => x !== slug && idx.oc.existeBairro(x, bairro))
-      .map((x) => ({ href: '/ocasioes/' + x + '/' + aSlug(bairro), txt: OCASIOES[x].titulo(' em ' + bairro) }))));
+      .map((x) => ({ href: '/ocasioes/' + x + '/' + aSlug(bairro), txt: OCASIOES[x].titulo(' ' + emBairro(bairro)) }))));
     blocos.push(pilulas('Veja também', [
-      { href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo em ' + bairro },
+      { href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo ' + emBairro(bairro) },
       geral ? { href: geral, txt: o.guia ? o.nome + ': o guia do Sello' : o.nome + (cidade ? ' em ' + cidade.nome : ', todos') } : null,
       todosOsGuias,
     ].filter(Boolean)));
     blocos.push(pilulas(o.nome + ' em outros bairros', outrosBairros.slice(0, 8)
-      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' em ' + nb) }))));
+      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' ' + emBairro(nb)) }))));
   } else {
     blocos.push(pilulas(o.nome + ' por bairro', outrosBairros.slice(0, 12)
-      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' em ' + nb) }))));
+      .map((nb) => ({ href: '/ocasioes/' + slug + '/' + aSlug(nb), txt: o.titulo(' ' + emBairro(nb)) }))));
     blocos.push(pilulas('Outras ocasiões', [
       ...Object.keys(OCASIOES)
         .filter((x) => x !== slug)
@@ -572,8 +578,8 @@ export default async function handler(req, res) {
 
   const filtros = [
     'is_active=eq.true',
-    bairro ? 'catalog_json->>neighborhood=eq.' + encodeURIComponent(bairro) : '',
-    cozinha ? 'catalog_json->>cuisine=eq.' + encodeURIComponent(cozinha) : '',
+    bairro ? filtroIn('catalog_json->>neighborhood', membrosBairro(bairro)) : '',
+    cozinha ? filtroIn('catalog_json->>cuisine', membrosCozinha(cozinha)) : '',
     'select=' + COLS,
     'limit=300',
   ].filter(Boolean).join('&');
@@ -602,17 +608,19 @@ export default async function handler(req, res) {
   let h1, title, canonical, lead, description, kicker, trilha;
   if (tipo === 'bairro') {
     const cozinhasTop = maisFrequentes(rows, 'cuisine', 3);
-    h1 = 'Onde comer em ' + bairro;
-    title = 'Onde comer em ' + bairro + ufTitulo + ': ' + rows.length + ' restaurantes | Sello';
+    h1 = 'Onde comer ' + emBairro(bairro);
+    title = 'Onde comer ' + emBairro(bairro) + ufTitulo + ': ' + rows.length + ' restaurantes | Sello';
     canonical = SITE + '/onde-comer/' + aSlug(bairro);
     kicker = 'Bairro';
     lead = frases(
-      rows.length + ' lugares em ' + bairro + naCidadeAposto + ' selecionados pelo Sello, na ordem da curadoria.',
+      rows.length + ' lugares ' + emBairro(bairro) + naCidadeAposto + ' selecionados pelo Sello, na ordem da curadoria.',
+      // Região (REGIOES): diz quais bairros do catálogo ela soma.
+      REGIOES[bairro] ? 'Reúne ' + listaHumana([...new Set(membrosBairro(bairro).filter((m) => rows.some((r) => r.catalog_json && r.catalog_json.neighborhood === m)).map((m) => m.replace(' de São Paulo', '').replace('Cecilia', 'Cecília')))]) + '.' : '',
       cozinhasTop.length ? 'Cozinhas mais presentes: ' + listaHumana(cozinhasTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
       fatosDeOcasiao(idx, bairro),
       fraseFinal,
     );
-    description = 'Onde comer em ' + bairro + naCidade + ': ' + rows.length + ' restaurantes com curadoria do Sello' +
+    description = 'Onde comer ' + emBairro(bairro) + naCidade + ': ' + rows.length + ' restaurantes com curadoria do Sello' +
       (cozinhasTop.length ? ', com destaque para ' + listaHumana(cozinhasTop.map((e) => e[0].toLowerCase())) : '') +
       '. Nota, preço e o que pedir em cada um.';
     trilha = migalhas([
@@ -623,12 +631,15 @@ export default async function handler(req, res) {
   } else if (tipo === 'cozinha') {
     const bairrosTop = maisFrequentes(rows, 'neighborhood', 3);
     h1 = 'Os melhores ' + tax.plural;
-    title = 'Os melhores ' + tax.plural + (cidade && cidade.uf ? ' em ' + cidade.uf : '') + ' | Sello';
+    title = (tax.titulo
+      ? tax.titulo(cidade && cidade.uf ? ' em ' + cidade.uf : '')
+      : 'Os melhores ' + tax.plural + (cidade && cidade.uf ? ' em ' + cidade.uf : '')) + ' | Sello';
     canonical = SITE + '/restaurantes/' + tax.slug;
     kicker = 'Cozinha';
     lead = frases(
       rows.length + ' ' + tax.plural + (cidade ? ' em ' + cidade.nome : '') +
         ' selecionados pelo Sello, na ordem da curadoria — com endereço, faixa de preço e horário.',
+      GRUPOS_COZINHA[cozinha] ? 'Inclui ' + listaHumana(GRUPOS_COZINHA[cozinha].map((m) => COZINHAS[m] ? COZINHAS[m].plural : m)) + '.' : '',
       bairrosTop.length ? 'Bairros com mais opções: ' + listaHumana(bairrosTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
       fraseFinal,
     );
@@ -642,17 +653,17 @@ export default async function handler(req, res) {
     ]);
   } else {
     const melhor = melhorAvaliado(rows, notas);
-    h1 = maiuscula(tax.plural) + ' em ' + bairro;
-    title = 'Os melhores ' + tax.plural + ' em ' + bairro + ufTitulo + ' | Sello';
+    h1 = maiuscula(tax.plural) + ' ' + emBairro(bairro);
+    title = 'Os melhores ' + tax.plural + ' ' + emBairro(bairro) + ufTitulo + ' | Sello';
     canonical = SITE + '/restaurantes/' + tax.slug + '/' + aSlug(bairro);
     kicker = cozinha + ' · ' + bairro;
     lead = frases(
-      rows.length + ' ' + tax.plural + ' em ' + bairro + naCidadeAposto +
+      rows.length + ' ' + tax.plural + ' ' + emBairro(bairro) + naCidadeAposto +
         ' na curadoria do Sello — com o que pedir, quanto custa e a que horas abre.',
       melhor ? 'A nota mais alta da comunidade é de ' + melhor.name + ' (' + decimal(notaDe(melhor, notas)) + ').' : '',
       fraseFinal,
     );
-    description = rows.length + ' ' + tax.plural + ' em ' + bairro + naCidadeAposto +
+    description = rows.length + ' ' + tax.plural + ' ' + emBairro(bairro) + naCidadeAposto +
       ' com curadoria do Sello — com o que pedir, preço e horário de cada um.';
     /* O degrau do meio é o bairro, quando ele tem página; se não tiver, é a
      * cozinha (a página dela ou o guia que a substitui). */
@@ -673,32 +684,32 @@ export default async function handler(req, res) {
     const porCozinha = [];
     for (const nome of Object.keys(COZINHAS)) {
       if (comboOk(idx, nome, bairro)) {
-        porCozinha.push({ href: '/restaurantes/' + COZINHAS[nome].slug + '/' + aSlug(bairro), txt: COZINHAS[nome].plural + ' em ' + bairro });
+        porCozinha.push({ href: '/restaurantes/' + COZINHAS[nome].slug + '/' + aSlug(bairro), txt: COZINHAS[nome].plural + ' ' + emBairro(bairro) });
       }
     }
-    blocos.push(pilulas('Por cozinha em ' + bairro, porCozinha));
-    blocos.push(pilulas('Por ocasião em ' + bairro, Object.keys(OCASIOES)
+    blocos.push(pilulas('Por cozinha ' + emBairro(bairro), porCozinha));
+    blocos.push(pilulas('Por ocasião ' + emBairro(bairro), Object.keys(OCASIOES)
       .filter((o) => idx.oc.existeBairro(o, bairro))
-      .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' em ' + bairro) }))));
+      .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' ' + emBairro(bairro)) }))));
     blocos.push(pilulas('Outros bairros perto', [
-      ...bairrosPerto(idx, bairro, 8).map((nb) => ({ href: '/onde-comer/' + aSlug(nb), txt: 'Onde comer em ' + nb })),
+      ...bairrosPerto(idx, bairro, 8).map((nb) => ({ href: '/onde-comer/' + aSlug(nb), txt: 'Onde comer ' + emBairro(nb) })),
       todosOsGuias,
     ]));
   } else if (tipo === 'combo') {
     const tudo = [];
-    if (bairroOk(idx, bairro)) tudo.push({ href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo em ' + bairro });
+    if (bairroOk(idx, bairro)) tudo.push({ href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo ' + emBairro(bairro) });
     const dest = destinoCozinha(idx, cozinha);
     if (dest) tudo.push({ href: dest, txt: (tax.guia ? 'O guia de ' : 'Todos os ') + tax.plural });
     tudo.push(todosOsGuias);
     blocos.push(pilulas('Veja também', tudo));
-    blocos.push(pilulas('Outras cozinhas em ' + bairro, Object.keys(COZINHAS)
+    blocos.push(pilulas('Outras cozinhas ' + emBairro(bairro), Object.keys(COZINHAS)
       .filter((c) => c !== cozinha && comboOk(idx, c, bairro))
-      .map((c) => ({ href: '/restaurantes/' + COZINHAS[c].slug + '/' + aSlug(bairro), txt: COZINHAS[c].plural + ' em ' + bairro }))));
+      .map((c) => ({ href: '/restaurantes/' + COZINHAS[c].slug + '/' + aSlug(bairro), txt: COZINHAS[c].plural + ' ' + emBairro(bairro) }))));
     blocos.push(pilulas(maiuscula(tax.plural) + ' em outros bairros', Object.keys(idx.nBairro)
       .filter((nb) => nb !== bairro && comboOk(idx, cozinha, nb))
       .sort((x, y) => idx.nCombo[cozinha + '|' + y] - idx.nCombo[cozinha + '|' + x])
       .slice(0, 8)
-      .map((nb) => ({ href: '/restaurantes/' + tax.slug + '/' + aSlug(nb), txt: tax.plural + ' em ' + nb }))));
+      .map((nb) => ({ href: '/restaurantes/' + tax.slug + '/' + aSlug(nb), txt: tax.plural + ' ' + emBairro(nb) }))));
   } else {
     const porBairro = {};
     for (const r of rows) {

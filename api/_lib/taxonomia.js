@@ -33,7 +33,10 @@ export const COZINHAS = {
   // ── sem guia: aqui a página de cozinha é a única chance de aparecer ───────
   'Boteco':                   { slug: 'botecos',          plural: 'botecos' },
   'Drinks & Listening Bars':  { slug: 'bares-de-drinks',  plural: 'bares de drinks' },
-  'Bares & Vida Noturna':     { slug: 'bares',            plural: 'bares' },
+  // A página de bares é a de maior busca depois de "restaurantes" ("bares de sp",
+  // 22 mil/mês) e junta as três categorias de bar (ver GRUPOS_COZINHA).
+  'Bares & Vida Noturna':     { slug: 'bares',            plural: 'bares',
+                                titulo: (onde) => 'Bares' + onde + ': os melhores bares, botecos e drinks' },
   'Asiática':                 { slug: 'asiaticos',        plural: 'restaurantes asiáticos' },
   'Mediterrânea':             { slug: 'mediterraneos',    plural: 'restaurantes mediterrâneos' },
   'Árabe & Oriente Médio':    { slug: 'arabes',           plural: 'restaurantes árabes' },
@@ -45,6 +48,41 @@ export const COZINHAS = {
   'Hot Dog':                  { slug: 'hot-dog',          plural: 'hot dogs' },
   'Vegana':                   { slug: 'veganos',          plural: 'restaurantes veganos' },
 };
+
+/**
+ * GRUPOS de cozinha: a página da chave mostra as casas de todas as categorias
+ * da lista. "Bares em SP" é como a pessoa busca; o catálogo divide em três
+ * (bar, bar de drinks, boteco). As páginas de cada parte continuam existindo.
+ */
+export const GRUPOS_COZINHA = {
+  'Bares & Vida Noturna': ['Bares & Vida Noturna', 'Drinks & Listening Bars', 'Boteco'],
+};
+
+/**
+ * REGIÕES: o nome que a pessoa busca para um conjunto de bairros do catálogo.
+ * Ninguém busca "Cerqueira César": busca "Jardins". A página da região soma os
+ * pedaços; a de cada pedaço continua existindo.
+ */
+export const REGIOES = {
+  'Jardins': ['Jardins', 'Jardim Paulista', 'Cerqueira César', 'Jardim Paulistano', 'Jardim Europa'],
+  'Centro': ['Centro Histórico de São Paulo', 'República', 'Vila Buarque', 'Santa Cecília', 'Santa Cecilia', 'Campos Elíseos'],
+};
+
+/** "em Pinheiros", mas "nos Jardins" e "no Centro": a região leva o artigo. */
+const EM_REGIAO = { Jardins: 'nos Jardins', Centro: 'no Centro' };
+export const emBairro = (b) => EM_REGIAO[b] || 'em ' + b;
+
+/** As categorias que uma página de cozinha mostra. */
+export const membrosCozinha = (c) => GRUPOS_COZINHA[c] || [c];
+/** As páginas de cozinha em que uma casa desta categoria conta (ela + grupos). */
+export const cozinhasAlvo = (c) => [c, ...Object.keys(GRUPOS_COZINHA).filter((g) => g !== c && GRUPOS_COZINHA[g].includes(c))];
+/** Os bairros do catálogo que uma página de bairro mostra. */
+export const membrosBairro = (b) => REGIOES[b] || [b];
+/** As páginas de bairro em que uma casa deste bairro conta (ele + regiões). */
+export const bairrosAlvo = (b) => [b, ...Object.keys(REGIOES).filter((r) => r !== b && REGIOES[r].includes(b))];
+/** Filtro PostgREST "campo in (a, b)" com aspas (nomes têm espaço e acento). */
+export const filtroIn = (campo, valores) =>
+  campo + '=in.(' + valores.map((v) => encodeURIComponent('"' + String(v).replace(/"/g, '') + '"')).join(',') + ')';
 
 /** Acento e espaço fora, para virar endereço. */
 export function aSlug(s) {

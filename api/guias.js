@@ -19,7 +19,7 @@
 
 import { TITULOS_DE_BUSCA } from './_lib/titulos-de-busca.js';
 import {
-  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas,
+  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, cozinhasAlvo, bairrosAlvo,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './_lib/ocasioes.js';
 import { PRATOS, contarPratos, destinoPrato } from './_lib/pratos.js';
@@ -43,8 +43,8 @@ async function sb(path) {
 function descoberta(rows) {
   const nBairro = {}, nCozinha = {};
   for (const r of rows) {
-    if (r.neighborhood) nBairro[r.neighborhood] = (nBairro[r.neighborhood] || 0) + 1;
-    if (r.cuisine && COZINHAS[r.cuisine]) nCozinha[r.cuisine] = (nCozinha[r.cuisine] || 0) + 1;
+    if (r.neighborhood) for (const x of bairrosAlvo(r.neighborhood)) nBairro[x] = (nBairro[x] || 0) + 1;
+    if (r.cuisine && COZINHAS[r.cuisine]) for (const y of cozinhasAlvo(r.cuisine)) nCozinha[y] = (nCozinha[y] || 0) + 1;
   }
   const porNome = (x, y) => x.localeCompare(y, 'pt-BR');
   const bairros = Object.keys(nBairro)
