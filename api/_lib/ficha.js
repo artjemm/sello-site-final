@@ -451,7 +451,7 @@ export function layoutRestaurante(r, c, d) {
   '<div class="fx-lb" id="fx-lb" hidden aria-modal="true" role="dialog" aria-label="Fotos">' +
     '<button type="button" class="fx-lb__x" aria-label="Fechar">' + icone('x') + '</button>' +
     '<button type="button" class="fx-lb__nav fx-lb__nav--esq" aria-label="Anterior">' + icone('esq') + '</button>' +
-    '<figure class="fx-lb__fig"><img alt="" /><figcaption></figcaption></figure>' +
+    '<figure class="fx-lb__fig"><span class="fx-lb__quadro"><img alt="" /><figcaption></figcaption></span></figure>' +
     '<button type="button" class="fx-lb__nav fx-lb__nav--dir" aria-label="Próxima">' + icone('dir') + '</button>' +
     '<span class="fx-lb__cont"></span>' +
   '</div>';
@@ -854,11 +854,15 @@ export const CSS_FICHA = `
   .fx-lb[hidden] { display:none; }
   .fx-lb.aberto { opacity:1; }
   .fx-lb__fig { margin:0; max-width:min(92vw,1200px); text-align:center; }
+  /* A moldura tem o tamanho exato da foto: é ela que segura o crédito no canto
+   * da imagem (e não da caixa da tela, que é maior que a foto). */
+  .fx-lb__quadro { position:relative; display:inline-block; max-width:100%; vertical-align:top; }
   .fx-lb__fig img { max-width:100%; max-height:82vh; border-radius:18px; display:block; margin:0 auto; }
   .fx-lb.troca .fx-lb__fig img { animation:fxEntra .55s var(--ease); }
   @keyframes fxEntra { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:none; } }
-  .fx-lb__fig figcaption { display:inline-block; color:rgba(255,255,255,.85); font-size:12px; font-weight:600; margin-top:12px;
-    padding:4px 11px; border-radius:999px; background:rgba(255,255,255,.12); }
+  .fx-lb__fig figcaption { position:absolute; left:12px; bottom:12px; margin:0; color:#fff; font-size:11px; font-weight:600;
+    padding:3px 10px; border-radius:999px; background:rgba(13,17,27,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    pointer-events:none; }
   .fx-lb__fig figcaption:empty { display:none; }
   .fx-lb button { border:0; background:rgba(255,255,255,.1); color:#fff; border-radius:50%; width:48px; height:48px; display:grid; place-items:center;
     cursor:pointer; transition:background .3s var(--ease), transform .3s var(--ease); }
