@@ -470,6 +470,29 @@ export const JS_FICHA = `
   var $$ = function (s, el) { return [].slice.call((el || document).querySelectorAll(s)); };
   var hero = $('.fx-hero');
 
+  /* "Abrir no Sello" (links sello://) conforme o aparelho:
+   *  - Android: intent:// — o Android abre o app se estiver instalado e, se
+   *    não estiver, cai sozinho no Google Play (S.browser_fallback_url).
+   *  - iPhone: a página do Sello na App Store, que mostra "Abrir" para quem já
+   *    tem o app. Tentar o sello:// direto no iOS sem o app instalado faz o
+   *    Safari mostrar "endereço inválido" antes de qualquer redirecionamento.
+   *  - Computador: não há app para abrir — vira o popup de download com o QR
+   *    (o js/sello.js, que roda depois deste, abre o #dl-modal em todo
+   *    [data-cta="download"]). */
+  (function () {
+    var ua = navigator.userAgent || '';
+    var ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    var android = /Android/i.test(ua);
+    var APP_STORE = 'https://apps.apple.com/br/app/sello/id6791353216';
+    var PLAY = 'https://play.google.com/store/apps/details?id=com.sello.app';
+    $$('a[href^="sello://"]').forEach(function (a) {
+      var caminho = a.getAttribute('href').slice('sello://'.length);
+      if (android) a.setAttribute('href', 'intent://' + caminho + '#Intent;scheme=sello;package=com.sello.app;S.browser_fallback_url=' + encodeURIComponent(PLAY) + ';end');
+      else if (ios) a.setAttribute('href', APP_STORE);
+      else a.setAttribute('data-cta', 'download');
+    });
+  })();
+
   /* Âncoras internas: com o Lenis ligado o salto nativo é seco; deixa ele rolar. */
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href^="#"]');
