@@ -58,12 +58,17 @@ const IC = {
 const icone = (n, cls) => '<svg class="' + (cls || 'fx-ic') + '" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>';
 
 /** Foto do Storage redimensionada pela largura (o corte é do CSS). URL de fora
- *  do nosso Storage passa intacta. */
+ *  do nosso Storage passa intacta.
+ *
+ *  `resize=contain` é obrigatório: só com `width`, o Supabase reduz a largura e
+ *  MANTÉM a altura original — uma capa 1333×2000 voltava 640×2000, espremida, e
+ *  o object-fit a esticava de volta: foto pixelada e deformada em todo cartão
+ *  e capa do site até 04/10/2026. O app aprendeu isso antes (lib/img.ts). */
 export function foto(u, largura) {
   const s = String(u ?? '');
   if (!s.includes('/storage/v1/object/public/')) return s;
   return s.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') +
-    (s.includes('?') ? '&' : '?') + 'width=' + largura + '&quality=72';
+    (s.includes('?') ? '&' : '?') + 'width=' + largura + '&quality=75&resize=contain';
 }
 
 /** Os tamanhos da capa, para o srcset e para o preload em share.js. */
@@ -199,7 +204,7 @@ function pratos(c) {
     lista.map((d, i) =>
       '<article class="fx-prato' + (d.image ? '' : ' fx-prato--sem-foto') + '" style="--i:' + i + '">' +
         '<div class="fx-prato__media">' +
-          (d.image ? '<img src="' + esc(foto(d.image, 480)) + '" alt="' + esc(d.name) + '" loading="lazy" decoding="async" />' : '') +
+          (d.image ? '<img src="' + esc(foto(d.image, 640)) + '" alt="' + esc(d.name) + '" loading="lazy" decoding="async" />' : '') +
           '<span class="fx-prato__n">' + (i + 1) + '</span>' +
         '</div>' +
         '<div class="fx-prato__txt"><h3>' + esc(d.name) + '</h3>' + (d.note ? '<p>' + esc(d.note) + '</p>' : '') + '</div>' +
@@ -260,7 +265,7 @@ function galeria(fotos, nome) {
   return secao('fotos', fotos.length + ' fotos', 'Fotos', '<div class="fx-bento">' +
     fotos.slice(0, MAX).map((f, i) =>
       '<button type="button" class="fx-bento__item" data-fx-foto="' + i + '" style="--i:' + i + '" aria-label="Ampliar foto ' + (i + 1) + '">' +
-        '<img src="' + esc(foto(f.url, i === 0 ? 900 : 480)) + '" data-grande="' + esc(foto(f.url, 1600)) + '" alt="' + esc(nome + ' — foto ' + (i + 1)) +
+        '<img src="' + esc(foto(f.url, i === 0 ? 1200 : 640)) + '" data-grande="' + esc(foto(f.url, 1600)) + '" alt="' + esc(nome + ' — foto ' + (i + 1)) +
         '" loading="lazy" decoding="async" />' + credito(f.attr) +
         (i === MAX - 1 && fotos.length > MAX ? '<span class="fx-bento__mais">+' + (fotos.length - MAX) + '</span>' : '') +
       '</button>').join('') +

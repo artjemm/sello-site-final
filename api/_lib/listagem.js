@@ -51,7 +51,7 @@ function cartaoLugar(item, i, notas, numerar) {
   return '<article class="fx-lugar" data-reveal data-delay="' + (i % 3) + '">' +
     '<a class="fx-lugar__foto" href="' + esc(href) + '" aria-label="' + esc(r.name) + '">' +
       (r.hero_image
-        ? '<img src="' + esc(foto(r.hero_image, 640)) + '" alt="' + esc(r.name) + '" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
+        ? '<img src="' + esc(foto(r.hero_image, 800)) + '" alt="' + esc(r.name) + '" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
         : '') +
       (numerar ? '<span class="fx-lugar__n">' + (i + 1) + '</span>' : '') +
       (nc
@@ -78,7 +78,7 @@ function bloco(b) {
     ? '<div class="fx-capas">' + b.links.map((l, i) =>
         '<a class="fx-guia" href="' + esc(l.href) + '" data-reveal data-delay="' + (i % 3) + '">' +
           '<span class="fx-guia__foto">' + (l.img
-            ? '<img src="' + esc(foto(l.img, 640)) + '" alt="" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
+            ? '<img src="' + esc(foto(l.img, 800)) + '" alt="" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
             : '') + '</span>' +
           '<span class="fx-guia__txt"><b>' + esc(l.txt) + '</b>' + (l.desc ? '<small>' + esc(l.desc) + '</small>' : '') + '</span>' +
         '</a>').join('') + '</div>'
