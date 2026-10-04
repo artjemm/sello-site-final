@@ -111,8 +111,14 @@ async function resolve(type, rawSlug) {
         `restaurants?slug=eq.${encodeURIComponent(slug)}&is_active=eq.true&select=${COLS}&limit=1`,
       ));
     if (!r) return null;
-    const [viz, notas] = await Promise.all([vizinhanca(r), notasComunidade()]);
-    return fichaRestaurante(r, viz, notas);
+    const c = r.catalog_json || {};
+    const [viz, notas, capa] = await Promise.all([
+      vizinhanca(r),
+      notasComunidade(),
+      // A foto principal só abre a página se for nítida; senão, a maior da galeria.
+      capaNitida(r.hero_image, (c.gallery || []).slice(0, 6)),
+    ]);
+    return fichaRestaurante(r, viz, notas, capa);
   }
 
   if (type === 'g') {
@@ -360,7 +366,7 @@ function resumo(r, c, d) {
   return out.length > 1 ? '<section class="resumo"><h2>Em resumo</h2><p>' + esc(out.join(' ')) + '</p></section>' : '';
 }
 
-function fichaRestaurante(r, viz = {}, notas = new Map()) {
+function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
   const c = r.catalog_json || {};
   const cozinha = c.cuisine || c.sello_primary_category || '';
   const bairro = c.neighborhood || '';
@@ -452,6 +458,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   if (viz.paginaBairro) trilhaFicha.push({ name: bairro, url: viz.paginaBairro });
   trilhaFicha.push({ name: r.name });
   const main = layoutRestaurante(r, c, {
+    capa,
     cozinha, bairro, nc, posicao, cidade: viz.cidade,
     externas: fontesExternas(r, c),
     deepLink: 'sello://restaurant/' + r.slug,
@@ -551,7 +558,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map()) {
   return {
     title: title,
     description: description,
-    image: r.hero_image,
+    image: capa || r.hero_image,
     imageAlt: r.name,
     heading: r.name,
     kicker: [cozinha, bairro].filter(Boolean).join(' · ') || 'Restaurante',

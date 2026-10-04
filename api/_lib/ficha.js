@@ -94,8 +94,12 @@ function credito(a) {
   return t ? '<span class="fx-credito">' + esc(t) + '</span>' : '';
 }
 
-/** Capa primeiro, depois a galeria, sem repetir; cada foto com seu crédito. */
-function fotosDe(r, c) {
+/** Capa primeiro, depois a galeria, sem repetir; cada foto com seu crédito.
+ *  `capa` (de capaNitida, em share.js) é a foto que abre a página: a principal
+ *  cadastrada quando ela é grande, senão a maior da galeria — a da Casa do Porco
+ *  Bar tinha 678×452 e virava borrão esticada a 1800px. As outras seguem na
+ *  ordem de sempre. */
+function fotosDe(r, c, capa) {
   const vistas = new Set();
   const out = [];
   const add = (url, attr) => {
@@ -103,6 +107,12 @@ function fotosDe(r, c) {
     vistas.add(url);
     out.push({ url, attr });
   };
+  const creditoDe = (url) => {
+    if (url === r.hero_image) return c.hero_attribution;
+    const i = (c.gallery || []).indexOf(url);
+    return i >= 0 ? (c.gallery_attributions || [])[i] : undefined;
+  };
+  if (capa) add(capa, creditoDe(capa));
   add(r.hero_image, c.hero_attribution);
   (c.gallery || []).forEach((u, i) => add(u, (c.gallery_attributions || [])[i]));
   return out;
@@ -397,7 +407,7 @@ export function barraEModalDownload() {
  * `d` vem de share.js; `explorar` chega como [{ href, txt }].
  */
 export function layoutRestaurante(r, c, d) {
-  const fotos = fotosDe(r, c);
+  const fotos = fotosDe(r, c, d.capa);
 
   const abas = [
     ['resumo', 'Visão geral'],
