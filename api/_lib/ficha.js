@@ -149,8 +149,8 @@ function capa(r, c, d, fotos) {
         chips.map((t) => '<span class="fx-vidro">' + esc(t) + '</span>').join('') +
       '</div>' +
       '<div class="fx-acoes hero-in hero-in--2">' +
-        botao(d.deepLink, 'Abrir no Sello', 'btn--accent btn--app') +
-        (fotos.length > 1 ? botao('#fotos', 'Ver ' + fotos.length + ' fotos', 'btn--white btn--app') : '') +
+        botao(d.deepLink, 'Abrir no Sello', 'btn--accent fx-btn-alto') +
+        (fotos.length > 1 ? botao('#fotos', 'Ver ' + fotos.length + ' fotos', 'btn--white fx-btn-alto') : '') +
       '</div>' +
     '</div>' +
     (f && f.attr && f.attr.attribution_text ? '<span class="fx-hero__credito">' + esc(f.attr.attribution_text) + '</span>' : '') +
@@ -315,7 +315,7 @@ function lateral(r, c, d) {
         '<span class="fx-agora__ponto"></span><span class="fx-agora__txt">Horário</span></div>'
       : '') +
     linhas +
-    '<div class="fx-cartao__cta">' + botao(d.deepLink, 'Abrir no Sello', 'btn--accent btn--app fx-btn-bloco') +
+    '<div class="fx-cartao__cta">' + botao(d.deepLink, 'Abrir no Sello', 'btn--accent fx-btn-alto fx-btn-bloco') +
     '<div class="fx-lojas"><a href="' + esc(d.appStore) + '">App Store</a><a href="' + esc(d.playStore) + '">Google Play</a></div></div>' +
     '</div></aside>';
 }
@@ -403,14 +403,16 @@ export function layoutRestaurante(r, c, d) {
         '<span class="fc__wm" aria-hidden="true"></span>' +
       '</footer>' +
   '</main>' +
-  /* Barra fixa de download. O botão sai para /baixar (funciona sem JS); no
-   * celular o JS troca pelo link direto da loja do aparelho — um toque e a
-   * pessoa está na App Store ou no Google Play. */
+  /* Barra fixa de download. O botão abre o popup de download da home (o
+   * js/sello.js abre o #dl-modal em todo [data-cta="download"]); sem JS, o
+   * href leva para /baixar. */
   '<div class="fx-barra-app" id="fx-barra-app" role="complementary" aria-label="Baixar o app do Sello">' +
     '<span class="fx-barra-app__selo" aria-hidden="true"></span>' +
     '<p><strong>Salve e avalie no app</strong><span>Mapa, listas e a nota de quem foi.</span></p>' +
-    '<a class="btn btn--accent fx-barra-app__baixar" id="fx-baixar" href="/baixar" data-ios="' + esc(d.appStore) + '" data-android="' + esc(d.playStore) + '"><span class="btn__t">Baixar o app</span></a>' +
+    '<a class="btn btn--accent fx-barra-app__baixar" id="fx-baixar" href="/baixar" data-cta="download"><span class="btn__t">Baixar o app</span></a>' +
   '</div>' +
+  // O popup de download da home, igual: selo, QR e os botões das lojas.
+  '<div class="dlm" id="dl-modal" hidden><div class="dlm__scrim" data-dl-close></div><div class="dlm__card" role="dialog" aria-modal="true" aria-label="Baixar o app Sello" aria-describedby="dlm-d"><button class="dlm__x" type="button" data-dl-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button><span class="dlm__seal" aria-hidden="true"><img src="/assets/img/seal.svg" alt="" decoding="async" /></span><p class="dlm__d" id="dlm-d">Leia o código para baixar o app Sello</p><div class="dlm__qr"><img src="/assets/img/qr.png?v=2" alt="QR Code para baixar o app Sello" decoding="async" /></div><div class="dlm__stores"><a class="btn dlm__store" href="https://apps.apple.com/br/app/sello/id6791353216" target="_blank" rel="noopener" data-store="ios"><svg class="ico-apple" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg><span class="dlm__store-t"><small>Baixar na</small><b>App Store</b></span></a><a class="btn dlm__store" href="https://play.google.com/store/apps/details?id=com.sello.app" target="_blank" rel="noopener" data-store="android"><svg class="btn__ico" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M325.3 234.3 104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg><span class="dlm__store-t"><small>Disponível no</small><b>Google Play</b></span></a></div></div></div>' +
   '<div class="fx-lb" id="fx-lb" hidden aria-modal="true" role="dialog" aria-label="Fotos">' +
     '<button type="button" class="fx-lb__x" aria-label="Fechar">' + icone('x') + '</button>' +
     '<button type="button" class="fx-lb__nav fx-lb__nav--esq" aria-label="Anterior">' + icone('esq') + '</button>' +
@@ -436,10 +438,11 @@ export const JS_FICHA = `
   /* Âncoras internas: com o Lenis ligado o salto nativo é seco; deixa ele rolar. */
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href^="#"]');
-    if (!a || a.getAttribute('href').length < 2) return;
+    if (!a || a.getAttribute('href').length < 2 || a.matches('.btn--app,[data-cta="download"],[data-store]')) return;
     var alvo = $(a.getAttribute('href'));
     if (!alvo) return;
     e.preventDefault();
+    e.stopImmediatePropagation();
     if (window.lenis) window.lenis.scrollTo(alvo, { offset: -150, duration: 1.2 });
     else alvo.scrollIntoView({ behavior: reduz ? 'auto' : 'smooth' });
   });
@@ -447,15 +450,10 @@ export const JS_FICHA = `
   /* Barra fixa de download. Sobe quando a folha começa a cobrir a capa (antes
    * disso a capa já tem o botão) e desce quando o rodapé chega — ele tem o
    * próprio QR e o próprio botão, e duas chamadas iguais empilhadas é ruído.
-   * Roda ANTES do js/sello.js (que é defer): o texto do botão é trocado antes
-   * de ele ser quebrado nas letras que viram. */
+   * Roda ANTES do js/sello.js (que é defer): o texto do botão é encurtado no
+   * celular antes de ele ser quebrado nas letras que viram. */
   var barraApp = $('#fx-barra-app'), baixar = $('#fx-baixar'), tick = false, noFim = false;
-  var ua = navigator.userAgent || '';
-  if (baixar) {
-    var loja = /iPhone|iPad|iPod/i.test(ua) ? baixar.getAttribute('data-ios')
-      : /Android/i.test(ua) ? baixar.getAttribute('data-android') : '';
-    if (loja) { baixar.setAttribute('href', loja); $('.btn__t', baixar).textContent = 'Baixar'; }
-  }
+  if (baixar && window.matchMedia && matchMedia('(max-width: 900px)').matches) $('.btn__t', baixar).textContent = 'Baixar';
   function rolou() {
     tick = false;
     if (barraApp) barraApp.classList.toggle('visivel', !noFim && (window.scrollY || 0) > (hero ? hero.offsetHeight * 0.35 : 300));
@@ -773,6 +771,8 @@ export const CSS_FICHA = `
   .fx-info a:hover { color:var(--red); background-size:100% 1.5px; }
   .fx-cartao__cta { padding-top:18px; display:grid; gap:12px; }
   .fx-btn-bloco { width:100%; }
+  /* Mesma medida do .btn--app da home, sem abrir o popup de download. */
+  .fx-btn-alto { min-width:160px; height:48px; font-size:20px; padding:0 18px; flex:none; }
   .fx-lojas { display:flex; justify-content:center; gap:18px; font-size:.84rem; font-weight:600; }
   .fx-lojas a { color:var(--muted); transition:color .3s var(--ease); }
   .fx-lojas a:hover { color:var(--red); }
