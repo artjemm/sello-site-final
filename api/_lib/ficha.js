@@ -760,6 +760,9 @@ export const CSS_FICHA = `
   .fx-bento__item:hover img { transform:scale(1.08); }
   .fx-bento__mais { position:absolute; inset:0; z-index:1; display:grid; place-items:center; background:rgba(13,17,27,.55); color:#fff;
     font-family:var(--font-disp); font-size:2rem; }
+  /* Na grade de fotos o crédito fica escondido (poluía as miniaturas); ele
+   * continua no DOM porque o visualizador o lê e mostra embaixo da foto aberta. */
+  .fx-bento__item .fx-credito { display:none; }
   .fx-credito { position:absolute; z-index:1; left:10px; bottom:10px; background:rgba(13,17,27,.55); color:#fff; font-size:10.5px; padding:3px 9px;
     border-radius:999px; pointer-events:none; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 
@@ -854,7 +857,9 @@ export const CSS_FICHA = `
   .fx-lb__fig img { max-width:100%; max-height:82vh; border-radius:18px; display:block; margin:0 auto; }
   .fx-lb.troca .fx-lb__fig img { animation:fxEntra .55s var(--ease); }
   @keyframes fxEntra { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:none; } }
-  .fx-lb__fig figcaption { color:rgba(255,255,255,.6); font-size:12.5px; margin-top:10px; }
+  .fx-lb__fig figcaption { display:inline-block; color:rgba(255,255,255,.85); font-size:12px; font-weight:600; margin-top:12px;
+    padding:4px 11px; border-radius:999px; background:rgba(255,255,255,.12); }
+  .fx-lb__fig figcaption:empty { display:none; }
   .fx-lb button { border:0; background:rgba(255,255,255,.1); color:#fff; border-radius:50%; width:48px; height:48px; display:grid; place-items:center;
     cursor:pointer; transition:background .3s var(--ease), transform .3s var(--ease); }
   .fx-lb button:hover { background:rgba(255,255,255,.22); transform:scale(1.06); }
