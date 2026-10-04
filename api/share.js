@@ -23,6 +23,7 @@ import { notasComunidade, fmtNota } from './_lib/notas.js';
 import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './_lib/ficha.js';
 import { layoutListagem, CSS_LISTA, capaNitida } from './_lib/listagem.js';
 import { fontesExternas } from './_lib/avaliacoes-externas.js';
+import { contarPratos } from './_lib/pratos.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 // Chave publicável (anon). Só enxerga o que o RLS libera para qualquer visitante
@@ -270,7 +271,9 @@ async function vizinhanca(r) {
     r.city_id ? sbAll(`cities?id=eq.${encodeURIComponent(r.city_id)}&select=name,state&limit=1`) : [],
     // Para a posição na cidade: a nota vem de todos os restaurantes, inclusive
     // os desativados; o ranking só conta quem está no ar.
-    sbAll('restaurants?is_active=eq.true&select=slug&limit=5000'),
+    // Os pratos de todos vão junto: dizem quais páginas /pratos/ existem, para
+    // o "o que pedir" desta ficha linkar só para página que passa do piso.
+    sbAll('restaurants?is_active=eq.true&select=slug,pratos:catalog_json->dishes->must_order&limit=5000'),
   ]);
 
   const paginaBairro = doBairro.length >= MINIMO.bairro ? '/onde-comer/' + aSlug(bairro) : '';
@@ -303,6 +306,7 @@ async function vizinhanca(r) {
     cidade: cidades[0] && cidades[0].name ? { nome: cidades[0].name, uf: cidades[0].state || '' } : null,
     slugsDoBairro: doBairro.map((v) => v.slug),
     slugsAtivos: ativos.map((v) => v.slug),
+    np: contarPratos(ativos),
     ocasioes,
     guias: guias.map((g) => g.lists).filter((l) => l && l.slug && l.title),
     paginaBairro,
@@ -533,6 +537,7 @@ function fichaRestaurante(r, viz = {}, notas = new Map(), capa = null) {
     deepLink: 'sello://restaurant/' + r.slug,
     appStore: APP_STORE, playStore: PLAY_STORE,
     guias: viz.guias || [],
+    np: viz.np || {},
     resumoHtml,
     trilhaHtml: '<nav class="trilha" aria-label="Você está em">' + trilhaFicha.map((t, i, a) =>
       i === a.length - 1 ? '<span>' + esc(t.name) + '</span>' : '<a href="' + esc(t.url) + '">' + esc(t.name) + '</a>',

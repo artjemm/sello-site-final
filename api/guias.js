@@ -22,6 +22,7 @@ import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './_lib/ocasioes.js';
+import { PRATOS, contarPratos, destinoPrato } from './_lib/pratos.js';
 import { layoutListagem, documentoListagem, capaNitida } from './_lib/listagem.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -50,10 +51,29 @@ function descoberta(rows) {
     .filter((b) => nBairro[b] >= MINIMO.bairro)
     .sort(porNome)
     .map((b) => ({ href: '/onde-comer/' + aSlug(b), txt: b }));
-  const cozinhas = Object.keys(nCozinha)
-    .filter((c) => !destinoFixo(COZINHAS[c]) && nCozinha[c] >= MINIMO.cozinha)
-    .sort((x, y) => porNome(COZINHAS[x].plural, COZINHAS[y].plural))
-    .map((c) => ({ href: '/restaurantes/' + COZINHAS[c].slug, txt: COZINHAS[c].plural }));
+  /* Cozinhas: a página própria, ou o guia que a substitui. O guia entra aqui
+   * também (além do cartão dele lá em cima) porque o texto do link importa: é
+   * "pizzarias" apontando para "Massa Crítica" que diz ao Google do que o
+   * guia trata. Um link por destino (Pizza e Pizza Napolitana dividem o guia). */
+  const vistos = new Set();
+  // Na ordem de COZINHAS, para "pizzarias" vencer "pizzarias napolitanas" no guia que dividem.
+  const cozinhas = Object.keys(COZINHAS).filter((c) => nCozinha[c])
+    .map((c) => {
+      const href = destinoFixo(COZINHAS[c])
+        ? (COZINHAS[c].ocasiao ? '' : destinoFixo(COZINHAS[c]))
+        : (nCozinha[c] >= MINIMO.cozinha ? '/restaurantes/' + COZINHAS[c].slug : '');
+      if (!href || vistos.has(href)) return null;
+      vistos.add(href);
+      return { href, txt: COZINHAS[c].plural };
+    })
+    .filter(Boolean)
+    .sort((x, y) => porNome(x.txt, y.txt));
+  // Pratos: a página do prato, ou o guia que disputa a busca dele (pratos.js).
+  const np = contarPratos(rows);
+  const pratos = Object.keys(PRATOS)
+    .map((s) => (destinoPrato(s, np) ? { href: destinoPrato(s, np), txt: PRATOS[s].nome } : null))
+    .filter(Boolean)
+    .sort((x, y) => porNome(x.txt, y.txt));
   /* Ocasiões: a página geral quando existe; quando um guia disputa a busca,
    * o link vai para o guia (é para lá que a página geral redireciona). */
   const oc = contarOcasioes(rows, MINIMO);
@@ -63,7 +83,7 @@ function descoberta(rows) {
       return href ? { href, txt: OCASIOES[o].nome } : null;
     })
     .filter(Boolean);
-  return { bairros, cozinhas, ocasioes };
+  return { bairros, cozinhas, ocasioes, pratos };
 }
 
 export default async function handler(req, res) {
@@ -71,7 +91,7 @@ export default async function handler(req, res) {
   try {
     [guias, catalogo, cidades] = await Promise.all([
       sb('lists?is_curated=eq.true&is_public=eq.true&select=title,subtitle,slug,cover&order=position.asc&limit=200'),
-      sb('restaurants?is_active=eq.true&select=city_id,catalog_json->>neighborhood,catalog_json->>cuisine,' + COLS_OCASIAO + '&limit=2000'),
+      sb('restaurants?is_active=eq.true&select=city_id,catalog_json->>neighborhood,catalog_json->>cuisine,pratos:catalog_json->dishes->must_order,' + COLS_OCASIAO + '&limit=2000'),
       sb('cities?select=id,name,state&limit=100'),
     ]);
   } catch {
@@ -79,7 +99,7 @@ export default async function handler(req, res) {
      * leva ao app. Melhor que um 500. */
   }
   guias = guias.filter((g) => g && g.slug && g.title);
-  const { bairros, cozinhas, ocasioes } = descoberta(catalogo);
+  const { bairros, cozinhas, ocasioes, pratos } = descoberta(catalogo);
 
   /* A cidade vem do catálogo (restaurants.city_id → cities), não do código —
    * ver taxonomia.js. Se o catálogo tiver mais de uma cidade, o título fica
@@ -151,6 +171,7 @@ export default async function handler(req, res) {
       { id: 'bairros', olho: 'Por bairro', titulo: 'Onde comer por bairro', links: bairros },
       { id: 'ocasioes', olho: 'Por ocasião', titulo: 'Para cada momento', links: ocasioes },
       { id: 'cozinhas', olho: 'Por cozinha', titulo: 'Por cozinha', links: cozinhas },
+      { id: 'pratos', olho: 'Por prato', titulo: 'Onde comer cada prato', links: pratos },
     ],
   });
 

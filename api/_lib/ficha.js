@@ -25,6 +25,7 @@
 import { esc } from './cartao.js';
 import { fmtNota } from './notas.js';
 import { fmtNotaFonte } from './avaliacoes-externas.js';
+import { PRATOS, pratoDoNome, destinoPrato } from './pratos.js';
 
 /* Versões dos arquivos da home — as mesmas que o index.html pede, para o
  * navegador reaproveitar o cache de quem veio de lá. */
@@ -207,9 +208,27 @@ function visaoGeral(c, d) {
   return secao('resumo', 'Visão geral', 'Sobre o lugar', corpo);
 }
 
-function pratos(c) {
+/** "Onde mais pedir carbonara →": do prato da casa para a página do prato
+ *  (/pratos/) ou para o guia que a substitui. Só quando a página existe. */
+function maisDoPrato(nome, np) {
+  const slug = pratoDoNome(nome);
+  const href = slug && np ? destinoPrato(slug, np) : null;
+  if (!href) return '';
+  return '<a class="fx-prato__mais" href="' + esc(href) + '">Onde mais pedir ' + esc(PRATOS[slug].nome.toLowerCase()) + ' <span aria-hidden="true">→</span></a>';
+}
+
+function pratos(c, np) {
   const lista = ((c.dishes && c.dishes.must_order) || []).filter((d) => d && d.name);
   if (!lista.length) return '';
+  // Um link por página: dois pratos de massa não repetem "onde mais pedir massas".
+  const usados = new Set();
+  const mais = (nome) => {
+    const html = maisDoPrato(nome, np);
+    const href = (html.match(/href="([^"]+)"/) || [])[1];
+    if (!href || usados.has(href)) return '';
+    usados.add(href);
+    return html;
+  };
   return secao('pedir', 'Do cardápio', 'O que pedir', '<div class="fx-pratos">' +
     lista.map((d, i) =>
       '<article class="fx-prato' + (d.image ? '' : ' fx-prato--sem-foto') + '" style="--i:' + i + '">' +
@@ -217,7 +236,7 @@ function pratos(c) {
           (d.image ? '<img src="' + esc(foto(d.image, 640)) + '" alt="' + esc(d.name) + '" loading="lazy" decoding="async" />' : '') +
           '<span class="fx-prato__n">' + (i + 1) + '</span>' +
         '</div>' +
-        '<div class="fx-prato__txt"><h3>' + esc(d.name) + '</h3>' + (d.note ? '<p>' + esc(d.note) + '</p>' : '') + '</div>' +
+        '<div class="fx-prato__txt"><h3>' + esc(d.name) + '</h3>' + (d.note ? '<p>' + esc(d.note) + '</p>' : '') + mais(d.name) + '</div>' +
       '</article>').join('') + '</div>');
 }
 
@@ -473,7 +492,7 @@ export function layoutRestaurante(r, c, d) {
       '<img src="/assets/img/seal.svg" alt="" class="sheet__seal" aria-hidden="true" width="80" height="80" decoding="async" />' +
       '<div class="wrap fx-grade">' +
         '<div class="fx-col">' +
-          visaoGeral(c, d) + pratos(c) + avaliacoes(c, d.nc, d.deepLink, d.externas) + galeria(fotos, r.name) +
+          visaoGeral(c, d) + pratos(c, d.np) + avaliacoes(c, d.nc, d.deepLink, d.externas) + galeria(fotos, r.name) +
           horario(c) + mapa(r, c) + perguntas(r, d.perguntas, d.tituloPerguntas) + guias + vizinhos +
           ((d.explorar || []).length ? secao('', 'Continue', 'Explore', pilulas(d.explorar)) : '') +
         '</div>' +
@@ -843,6 +862,9 @@ export const CSS_FICHA = `
     display:grid; place-items:center; font-family:var(--font-disp); font-size:1.05rem; padding-top:2px; box-shadow:0 8px 18px -8px rgba(227,15,47,.8); }
   .fx-prato--sem-foto .fx-prato__media { aspect-ratio:auto; height:58px; background:var(--pink); }
   .fx-prato__txt { padding:16px 18px 18px; }
+  .fx-prato__mais { display:inline-flex; gap:6px; margin-top:10px; font-size:.84rem; font-weight:700; color:var(--red); }
+  .fx-prato__mais span { transition:transform .35s var(--ease); }
+  .fx-prato__mais:hover span { transform:translateX(4px); }
   .fx-prato h3 { font-size:1rem; margin:0 0 6px; }
   .fx-prato p { font-size:.88rem !important; line-height:1.55 !important; }
 

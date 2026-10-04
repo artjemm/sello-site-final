@@ -28,6 +28,7 @@
 
 import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
+import { PRATOS, MINIMO_PRATO, pratosQueCasam } from './_lib/pratos.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
@@ -112,7 +113,7 @@ export default async function handler(req, res) {
       sb(
         'restaurants?is_active=eq.true&select=slug,share_slug,' +
           'catalog_json->>neighborhood,catalog_json->>cuisine,' +
-          'catalog_json->>enriched_at,catalog_json->>created_at,' + COLS_OCASIAO + '&limit=5000',
+          'catalog_json->>enriched_at,catalog_json->>created_at,pratos:catalog_json->dishes->must_order,' + COLS_OCASIAO + '&limit=5000',
       ),
       sb('lists?is_curated=eq.true&is_public=eq.true&select=slug,updated_at&order=updated_at.desc&limit=5000'),
     ]);
@@ -182,6 +183,16 @@ export default async function handler(req, res) {
         if (oc.existeBairro(o, b)) {
           entradas.push({ loc: '/ocasioes/' + o + '/' + aSlug(b), lastmod: maisRecente(datasOc[o + '|' + b] || []), freq: 'weekly', prio: '0.7' });
         }
+      }
+    }
+
+    /* Pratos: a mesma conta da rota (pratos.js) — só entra o que passa do piso
+     * e não é de guia (esses redirecionam). */
+    for (const slug of Object.keys(PRATOS)) {
+      if (PRATOS[slug].guia) continue;
+      const datas = rest.filter((r) => pratosQueCasam(slug, r).length).map(dataEditorial);
+      if (datas.length >= MINIMO_PRATO) {
+        entradas.push({ loc: '/pratos/' + slug, lastmod: maisRecente(datas), freq: 'weekly', prio: '0.8' });
       }
     }
 

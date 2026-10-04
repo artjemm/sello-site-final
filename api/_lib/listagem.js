@@ -24,6 +24,8 @@ import { jsonLd } from './taxonomia.js';
 
 const IC_PIN = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const IC_RELOGIO = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+// Talheres: o destaque de prato ("Peça: ...") nas páginas /pratos/.
+const IC_PRATO = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg>';
 const IC_SETA = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
 function cifroes(n) {
@@ -46,7 +48,7 @@ function cartaoLugar(item, i, notas, numerar) {
   const rua = ruaCurta(r.address);
   const hoje = horarioDeHoje(c.hours);
   const linhaHora = item.destaque
-    ? '<span>' + IC_RELOGIO + '<b>' + esc(item.destaque.rotulo) + '</b> ' + esc(item.destaque.valor) + '</span>'
+    ? '<span>' + (item.destaque.icone === 'prato' ? IC_PRATO : IC_RELOGIO) + '<b>' + esc(item.destaque.rotulo) + '</b> ' + esc(item.destaque.valor) + '</span>'
     : hoje ? '<span>' + IC_RELOGIO + esc(hoje) + '</span>' : '';
   return '<article class="fx-lugar" data-reveal data-delay="' + (i % 3) + '">' +
     '<a class="fx-lugar__foto" href="' + esc(href) + '" aria-label="' + esc(r.name) + '">' +

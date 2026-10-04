@@ -22,20 +22,23 @@
  * Guia sem entrada aqui cai no nome editorial, como era antes. Nada quebra.
  */
 export const TITULOS_DE_BUSCA = {
+  // "X em SP" na frente nos guias de cozinha/prato (out/2026): é a forma como a
+  // busca chega ("pizzarias em sp", "lamen em sp") — a UF é buscada ~6x mais
+  // que o nome da cidade. "melhores" e o nome por extenso ficam depois.
   // ── concentração alta: título direto, seguro ──────────────────────────────
-  'nonna-aprovaria':                 'Os melhores restaurantes italianos de São Paulo',
+  'nonna-aprovaria':                 'Restaurantes italianos em SP: os melhores de São Paulo',
   'alem-do-bom-retiro':              'Os melhores restaurantes coreanos de São Paulo',
   'muito-alem-da-tortilla':          'Os melhores restaurantes mexicanos de São Paulo',
   'lima-em-sao-paulo':               'Os melhores restaurantes peruanos de São Paulo',
-  'japao-alem-do-sushi':             'Os melhores restaurantes japoneses de São Paulo',
+  'japao-alem-do-sushi':             'Restaurantes japoneses em SP: os melhores de São Paulo',
   'o-brasil-no-prato':               'Os melhores restaurantes de comida brasileira em SP',
-  'burger-sem-firula':               'Os melhores hambúrgueres de São Paulo',
-  'no-meio-do-vapor':                'Os melhores lámen de São Paulo',
-  'cru-e-preciso':                   'Os melhores sushis de São Paulo',
+  'burger-sem-firula':               'Hamburguerias em SP: os melhores hambúrgueres',
+  'no-meio-do-vapor':                'Lámen em SP: os melhores ramen de São Paulo',
+  'cru-e-preciso':                   'Sushi em SP: os melhores de São Paulo',
   'nas-maos-do-chef':                'Os melhores omakases de São Paulo',
   'kampai':                          'Os melhores izakayas de São Paulo',
   'no-ponto-certo':                  'As melhores casas de carne de São Paulo',
-  'massa-critica':                   'As melhores pizzarias de São Paulo',
+  'massa-critica':                   'Pizzarias em SP: as melhores pizzas de São Paulo',
   'doce-final':                      'As melhores sobremesas de São Paulo',
   'a-fila-vale':                     'As melhores padarias e confeitarias de São Paulo',
   'mais-que-um-cafe':                'Os melhores cafés de São Paulo',

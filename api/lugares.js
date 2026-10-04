@@ -1,6 +1,6 @@
 /**
- * Páginas de descoberta — /onde-comer/:bairro, /restaurantes/:cozinha e
- * /restaurantes/:cozinha/:bairro.
+ * Páginas de descoberta — /onde-comer/:bairro, /restaurantes/:cozinha,
+ * /restaurantes/:cozinha/:bairro, /ocasioes/... e /pratos/:prato.
  *
  * POR QUE EXISTEM
  * O site tinha ficha de restaurante e guia editorial, e nada no meio. Quem
@@ -30,6 +30,7 @@ import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
+import { PRATOS, MINIMO_PRATO, pratosQueCasam, contarPratos, destinoPrato } from './_lib/pratos.js';
 import { esc, cifroes } from './_lib/cartao.js';
 import { layoutListagem, documentoListagem, capaNitida } from './_lib/listagem.js';
 import { notasComunidade } from './_lib/notas.js';
@@ -67,7 +68,7 @@ function indice() {
 async function montarIndice() {
   const rows = await sb(
     'restaurants?is_active=eq.true&select=slug,name,lat,lng,catalog_json->>neighborhood,catalog_json->>cuisine,' +
-      'sello:catalog_json->>sello_score,' + COLS_OCASIAO + '&limit=2000',
+      'sello:catalog_json->>sello_score,pratos:catalog_json->dishes->must_order,' + COLS_OCASIAO + '&limit=2000',
   );
   const bairros = new Map();
   const cozinhas = new Map();
@@ -92,7 +93,9 @@ async function montarIndice() {
   for (const [b, s] of Object.entries(soma)) centro[b] = { lat: s.lat / s.n, lng: s.lng / s.n };
   // Ocasiões: a mesma conta que o sitemap e os links usam (ocasioes.js).
   const oc = contarOcasioes(rows, MINIMO);
-  return { bairros, cozinhas, nBairro, nCozinha, nCombo, centro, oc, rows };
+  // Pratos: quantas casas mandam pedir cada um (pratos.js).
+  const np = contarPratos(rows);
+  return { bairros, cozinhas, nBairro, nCozinha, nCombo, centro, oc, np, rows };
 }
 
 /* ── O que passa do piso. Link para página que responde 404 é pior que link
@@ -448,6 +451,100 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
   }));
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Pratos — /pratos/:prato (ver pratos.js)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+async function paginaPrato(res, a, idx, linhasCidades) {
+  const slug = aSlug(a);
+  const p = PRATOS[slug];
+  if (!p) return erro404(res);
+  // Prato que um guia já disputa é do guia.
+  if (p.guia) {
+    res.setHeader('Location', '/g/' + p.guia);
+    res.status(308).end();
+    return;
+  }
+  const candidatos = idx.rows
+    .filter((r) => pratosQueCasam(slug, r).length)
+    .sort((x, y) => Number(y.sello || 0) - Number(x.sello || 0));
+  const total = candidatos.length;
+  if (total < MINIMO_PRATO) return erro404(res);
+
+  const LIMITE = 60;
+  const mostrar = candidatos.slice(0, LIMITE).map((r) => r.slug);
+  const [linhas, notas] = await Promise.all([
+    sb('restaurants?is_active=eq.true&slug=in.(' + mostrar.map(encodeURIComponent).join(',') + ')' +
+      '&select=' + COLS + '&limit=' + LIMITE),
+    notasComunidade(),
+  ]);
+  const ordem = new Map(mostrar.map((s, i) => [s, i]));
+  linhas.sort((x, y) => ordem.get(x.slug) - ordem.get(y.slug));
+  if (!linhas.length) return erro404(res);
+
+  const cidade = cidadeDasLinhas(linhas, mapaDeCidades(linhasCidades));
+  const naCidade = cidade ? ' em ' + cidade.nome : '';
+  const h1 = p.titulo(naCidade);
+  // "Carbonara em SP: 19 lugares para pedir" — a UF no título (ver taxonomia.js).
+  const title = p.busca(cidade && cidade.uf ? ' em ' + cidade.uf : '') + ': ' + total + ' lugares para pedir | Sello';
+  const canonical = SITE + '/pratos/' + slug;
+
+  const todos = candidatos.map((r) => ({ ...r, catalog_json: { cuisine: r.cuisine, neighborhood: r.neighborhood } }));
+  const bairrosTop = maisFrequentes(todos, 'neighborhood', 3);
+  const cozinhasTop = maisFrequentes(todos, 'cuisine', 3);
+  const melhor = melhorAvaliado(candidatos, notas);
+  const media = notaMedia(candidatos, notas);
+  const lead = frases(
+    'Na curadoria do Sello, ' + total + ' lugares' + naCidade + ' ' + p.frase + '.',
+    'Em cada cartão está o nome do prato como ele aparece na casa. Estão na ordem da curadoria.',
+    bairrosTop.length ? 'Bairros com mais opções: ' + listaHumana(bairrosTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
+    cozinhasTop.length > 1 ? 'Cozinhas: ' + listaHumana(cozinhasTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
+    melhor ? 'A nota mais alta da comunidade é de ' + melhor.name + ' (' + decimal(notaDe(melhor, notas)) + ').' : '',
+    media ? 'Nota média da comunidade: ' + media + '.' : '',
+  );
+  const description = p.busca(naCidade) + ': ' + total + ' lugares onde a curadoria do Sello manda pedir' +
+    (bairrosTop.length ? ', de ' + listaHumana(bairrosTop.map((e) => e[0])) + ' a outros bairros' : '') +
+    '. O prato de cada casa, nota e endereço.';
+
+  const trilha = migalhas([
+    { nome: 'Início', href: '/' },
+    { nome: 'Pratos', href: '/guias#pratos' },
+    { nome: p.nome, href: '/pratos/' + slug },
+  ]);
+
+  const outros = Object.keys(PRATOS)
+    .filter((s) => s !== slug && destinoPrato(s, idx.np))
+    .map((s) => ({ href: destinoPrato(s, idx.np), txt: PRATOS[s].nome }));
+  const blocos = [
+    pilulas('Outros pratos', outros),
+    pilulas('Veja também', [{ href: '/guias', txt: 'Todos os guias e bairros' }]),
+  ];
+
+  const jsonld = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: h1,
+    description: lead,
+    numberOfItems: linhas.length,
+    itemListElement: linhas.slice(0, 50).map((r, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: r.name,
+      url: SITE + '/r/' + (r.share_slug || r.slug),
+    })),
+  };
+
+  res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=86400');
+  res.status(200).send(await pagina({
+    title, description, h1, lead, canonical, jsonld, trilha,
+    kicker: 'Prato',
+    lugares: linhas.map((r) => ({ r, destaque: { icone: 'prato', rotulo: 'Peça', valor: pratosQueCasam(slug, r).join(' · ') } })),
+    total,
+    notas,
+    blocos: blocos.filter(Boolean),
+  }));
+}
+
 export default async function handler(req, res) {
   const q = req.query || {};
   const tipo = q.tipo || '';
@@ -457,6 +554,7 @@ export default async function handler(req, res) {
 
   const [idx, linhasCidades] = await Promise.all([indice(), sb('cities?select=id,name,state&limit=100')]);
   if (tipo === 'ocasiao') return paginaOcasiao(res, a, b, idx, linhasCidades);
+  if (tipo === 'prato') return paginaPrato(res, a, idx, linhasCidades);
   const bairro = tipo === 'bairro' ? idx.bairros.get(aSlug(a)) : (b ? idx.bairros.get(aSlug(b)) : null);
   const cozinha = tipo === 'bairro' ? null : idx.cozinhas.get(aSlug(a));
   const tax = cozinha ? COZINHAS[cozinha] : null;
