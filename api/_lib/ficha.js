@@ -550,14 +550,22 @@ export const JS_FICHA = `
     [baixar, $('#nav-baixar')].forEach(function (b) { if (b) $('.btn__t', b).textContent = 'Baixar'; });
   }
 
-  /* Menu "Explorar": no mouse abre no hover (CSS); no toque, abre e fecha no
-   * clique, e fecha ao tocar fora ou com Esc. */
+  /* Menu "Explorar": no mouse abre no hover (CSS); o clique alterna aberto e
+   * fechado. Fechar precisa vencer o hover — o mouse ainda está em cima do
+   * botão —, então fechar marca .is-fechado, que desliga o hover até o mouse
+   * sair. (Antes o :focus-within e o :hover seguravam o menu aberto e o X
+   * "não fechava".) Fecha também ao clicar fora e com Esc. */
   var mais = $('.nav__mais'), burger = $('.nav__burger');
   if (mais && burger) {
-    var abrirMenu = function (abre) { mais.classList.toggle('is-open', abre); burger.setAttribute('aria-expanded', abre ? 'true' : 'false'); };
+    var abrirMenu = function (abre) {
+      mais.classList.toggle('is-open', abre);
+      mais.classList.toggle('is-fechado', !abre);
+      burger.setAttribute('aria-expanded', abre ? 'true' : 'false');
+    };
     burger.addEventListener('click', function (e) { e.stopPropagation(); abrirMenu(!mais.classList.contains('is-open')); });
+    mais.addEventListener('mouseleave', function () { mais.classList.remove('is-fechado'); });
     document.addEventListener('click', function (e) { if (!mais.contains(e.target)) abrirMenu(false); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') abrirMenu(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { abrirMenu(false); burger.blur(); } });
   }
   function rolou() {
     tick = false;
@@ -776,13 +784,13 @@ export const CSS_FICHA = `
     opacity:0; transform:translate(-8px,-50%); transition:opacity .3s var(--ease), transform .4s var(--ease); }
   .nav__drop a:hover, .nav__drop a:focus-visible { background:var(--pink); }
   .nav__drop a:hover::after, .nav__drop a:focus-visible::after { opacity:1; transform:translate(0,-50%); }
-  .nav__mais.is-open .nav__drop, .nav__mais:focus-within .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
-  .nav__mais.is-open .nav__drop a, .nav__mais:focus-within .nav__drop a { opacity:1; transform:none; }
+  .nav__mais.is-open .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+  .nav__mais.is-open .nav__drop a { opacity:1; transform:none; }
   @media (hover:hover) {
-    .nav__mais:hover .nav__burger { background:var(--red); box-shadow:none; }
-    .nav__mais:hover .nav__burger i { background:#fff; width:18px; }
-    .nav__mais:hover .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
-    .nav__mais:hover .nav__drop a { opacity:1; transform:none; }
+    .nav__mais:hover:not(.is-fechado) .nav__burger { background:var(--red); box-shadow:none; }
+    .nav__mais:hover:not(.is-fechado) .nav__burger i { background:#fff; width:18px; }
+    .nav__mais:hover:not(.is-fechado) .nav__drop { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+    .nav__mais:hover:not(.is-fechado) .nav__drop a { opacity:1; transform:none; }
   }
   .nav__drop a:nth-child(2) { transition-delay:0s, .05s, .05s; }
   .nav__drop a:nth-child(3) { transition-delay:0s, .1s, .1s; }
