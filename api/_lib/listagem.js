@@ -54,9 +54,12 @@ function cartaoLugar(item, i, notas, numerar) {
         ? '<img src="' + esc(foto(r.hero_image, 800)) + '" alt="' + esc(r.name) + '" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
         : '') +
       (numerar ? '<span class="fx-lugar__n">' + (i + 1) + '</span>' : '') +
+      // O selo do app (feed, ActivityCard): quadrado vermelho, número em Anton.
+      // A contagem de votos fica no rótulo e na dica, não no selo.
       (nc
-        ? '<span class="fx-lugar__nota" title="Nota da comunidade: ' + nc.votos + (nc.votos === 1 ? ' avaliação' : ' avaliações') + '">' +
-          '<b>' + esc(fmtNota(nc.media)) + '</b>' + nc.votos + (nc.votos === 1 ? ' aval.' : ' aval.') + '</span>'
+        ? '<span class="fx-lugar__nota" title="Nota da comunidade: ' + nc.votos + (nc.votos === 1 ? ' avaliação' : ' avaliações') +
+          '" aria-label="Nota da comunidade ' + esc(fmtNota(nc.media)) + ' de 10, ' + nc.votos + (nc.votos === 1 ? ' avaliação' : ' avaliações') + '">' +
+          esc(fmtNota(nc.media)) + '</span>'
         : '') +
     '</a>' +
     '<div class="fx-lugar__txt">' +
@@ -268,11 +271,11 @@ export const CSS_LISTA = `
   .fx-lugar:hover .fx-lugar__foto img { transform:scale(1.07); }
   .fx-lugar__n { position:absolute; left:12px; top:12px; min-width:34px; height:34px; padding:2px 8px 0; border-radius:999px; background:var(--red);
     color:#fff; display:grid; place-items:center; font-family:var(--font-disp); font-size:1.05rem; box-shadow:0 8px 18px -8px rgba(227,15,47,.8); }
-  .fx-lugar__nota { position:absolute; right:12px; top:12px; display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 4px;
-    border-radius:999px; background:rgba(255,255,255,.95); font-size:.74rem; font-weight:700; color:var(--muted);
-    box-shadow:0 8px 20px -10px rgba(13,17,27,.5); }
-  .fx-lugar__nota b { background:var(--red); color:#fff; border-radius:999px; padding:3px 9px 1px; font-family:var(--font-disp);
-    font-weight:400; font-size:1rem; line-height:1.15; }
+  /* Igual ao selo do app (components/community/ActivityCard: 40×40, raio 9,
+   * Anton 16 branco no vermelho da marca), um pouco maior na tela grande. */
+  .fx-lugar__nota { position:absolute; right:12px; top:12px; width:44px; height:44px; border-radius:10px; background:var(--red);
+    color:#fff; display:grid; place-items:center; font-family:var(--font-disp); font-weight:400; font-size:1.15rem; line-height:1;
+    padding-top:2px; box-shadow:0 10px 22px -10px rgba(227,15,47,.85), 0 2px 6px rgba(13,17,27,.18); }
   .fx-lugar__txt { padding:16px 18px 18px; display:flex; flex-direction:column; gap:6px; flex:1; }
   .fx-lugar__meta { margin:0 !important; font-size:.72rem !important; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) !important; }
   .fx-lugar__nome { margin:0; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.45rem; line-height:1.2; padding-top:.04em; }
@@ -307,6 +310,7 @@ export const CSS_LISTA = `
   @media (max-width:640px) {
     .fx-lugares { grid-template-columns:1fr; gap:16px; }
     .fx-lugar__nome { font-size:1.3rem; }
+    .fx-lugar__nota { width:40px; height:40px; border-radius:9px; font-size:1rem; }
   }
 `;
 
