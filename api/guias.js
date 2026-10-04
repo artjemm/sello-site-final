@@ -22,7 +22,7 @@ import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './_lib/ocasioes.js';
-import { layoutListagem, documentoListagem } from './_lib/listagem.js';
+import { layoutListagem, documentoListagem, capaNitida } from './_lib/listagem.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Q431fFjy1BM9vjCeQfkJZw_CQHgCQwl';
@@ -119,7 +119,9 @@ export default async function handler(req, res) {
    * o menu usa (/guias#bairros, #ocasioes). O nome editorial do guia é o
    * título do cartão; o título de BUSCA entra como legenda quando não há
    * subtítulo — ajuda a entender do que o guia trata sem decifrar o nome. */
-  const capa = guias.find((g) => g.cover);
+  const comCapa = guias.filter((g) => g.cover);
+  const urlCapa = await capaNitida(comCapa[0] && comCapa[0].cover, comCapa.slice(1, 7).map((g) => g.cover));
+  const capa = urlCapa ? { cover: urlCapa } : null;
   const corpo = layoutListagem({
     kicker: 'Sello',
     h1,

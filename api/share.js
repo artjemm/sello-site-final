@@ -21,7 +21,7 @@ import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { notasComunidade, fmtNota } from './_lib/notas.js';
 import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './_lib/ficha.js';
-import { layoutListagem, CSS_LISTA } from './_lib/listagem.js';
+import { layoutListagem, CSS_LISTA, capaNitida } from './_lib/listagem.js';
 import { fontesExternas } from './_lib/avaliacoes-externas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -628,7 +628,7 @@ function textoResumoGuia(restaurantes, notas) {
   return out.join(' ');
 }
 
-function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
+async function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
   /* Mesmo cartao das paginas de descoberta: foto, nota, faixa de preco,
    * endereco e horario de hoje. Uma lista de nomes nao ajuda ninguem a decidir
    * onde jantar, e o dado para decidir ja estava no catalogo. */
@@ -709,6 +709,8 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
     ? fmtNota(avaliados.reduce((a, x) => a + x.media, 0) / avaliados.length)
     : '';
   const nBairros = new Set(restaurantes.map((r) => r.catalog_json && r.catalog_json.neighborhood).filter(Boolean)).size;
+  // A capa do guia, se for nítida; senão a maior foto entre os primeiros lugares.
+  const urlCapa = await capaNitida(g.cover, restaurantes.filter((r) => r.hero_image).slice(0, 6).map((r) => r.hero_image));
   const main = layoutListagem({
     kicker: 'Guia do Sello',
     h1: g.title,
@@ -720,9 +722,7 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
       { nome: 'Guias', href: '/guias' },
       { nome: g.title, href: path },
     ],
-    capa: g.cover || (restaurantes.find((r) => r.hero_image) || {}).hero_image
-      ? { url: g.cover || restaurantes.find((r) => r.hero_image).hero_image }
-      : null,
+    capa: urlCapa ? { url: urlCapa } : null,
     fatos: [
       n + (n === 1 ? ' lugar' : ' lugares'),
       nBairros > 1 ? nBairros + ' bairros' : '',
@@ -758,7 +758,7 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
   return {
     title: title,
     description: description,
-    image: g.cover,
+    image: urlCapa || g.cover,
     imageAlt: g.title,
     heading: g.title,
     kicker: g.subtitle || 'Guia do Sello',

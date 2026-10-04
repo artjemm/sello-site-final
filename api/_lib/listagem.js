@@ -70,6 +70,40 @@ function cartaoLugar(item, i, notas, numerar) {
   '</article>';
 }
 
+/**
+ * A foto da capa ocupa a tela inteira (~1800px no desktop). Uma foto pequena
+ * esticada nisso vira borrão — foi o caso da /guias, cuja capa era a do guia
+ * "Os 10 melhores", um JPEG de 678×452. Aqui a PREFERIDA (a capa do guia, o
+ * primeiro lugar da lista) só fica se for grande o bastante; senão vence a
+ * maior entre as alternativas.
+ *
+ * "Grande" é medido pelo tamanho do arquivo original (HEAD no Storage): sem
+ * baixar a imagem não dá para ler a resolução, e para foto JPEG o tamanho
+ * acompanha a resolução bem o suficiente — 678×452 dá ~33 KB, 1333×2000 dá
+ * ~175 KB. Prazo de 900ms: rede lenta não segura a página; na dúvida, fica a
+ * preferida. A página fica 10 min em cache na borda, então isso roda raramente.
+ */
+const MIN_BYTES_CAPA = 120 * 1024;
+
+export async function capaNitida(preferida, alternativas = []) {
+  const cand = [...new Set([preferida, ...alternativas].filter((u) => typeof u === 'string' && u))].slice(0, 7);
+  if (cand.length <= 1) return cand[0] || null;
+  const peso = (u) => fetch(u, { method: 'HEAD' })
+    // PNG pesa ~5x um JPEG da mesma resolução (e vira uma capa pesada): conta
+    // pelo que ele vale em resolução, não em bytes.
+    .then((r) => (r.ok
+      ? (Number(r.headers.get('content-length')) || 0) / (/png/i.test(r.headers.get('content-type') || '') ? 5 : 1)
+      : 0))
+    .catch(() => 0);
+  const prazo = new Promise((res) => setTimeout(() => res(null), 900));
+  const pesos = await Promise.race([Promise.all(cand.map(peso)), prazo]);
+  if (!pesos) return cand[0];
+  if (preferida && pesos[0] >= MIN_BYTES_CAPA) return cand[0];
+  let melhor = 0;
+  pesos.forEach((p, i) => { if (p > pesos[melhor]) melhor = i; });
+  return cand[melhor];
+}
+
 /** Um bloco de links: pílulas da home (.xb), cartões de guia (.xg) ou, no
  *  índice de guias, cartões com capa ('capas'). `id` vira âncora (/guias#bairros). */
 function bloco(b) {
@@ -241,7 +275,7 @@ export const CSS_LISTA = `
     font-weight:400; font-size:1rem; line-height:1.15; }
   .fx-lugar__txt { padding:16px 18px 18px; display:flex; flex-direction:column; gap:6px; flex:1; }
   .fx-lugar__meta { margin:0 !important; font-size:.72rem !important; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red) !important; }
-  .fx-lugar__nome { margin:0; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.45rem; line-height:1.12; }
+  .fx-lugar__nome { margin:0; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.45rem; line-height:1.2; padding-top:.04em; }
   .fx-lugar__nome a { color:var(--ink); background:linear-gradient(var(--red),var(--red)) 0 100%/0 2px no-repeat;
     transition:background-size .45s var(--ease), color .3s var(--ease); }
   .fx-lugar:hover .fx-lugar__nome a { background-size:100% 2px; }
@@ -261,7 +295,7 @@ export const CSS_LISTA = `
   .fx-guia__foto img { width:100%; height:100%; object-fit:cover; transition:transform 1s var(--ease); }
   .fx-guia:hover .fx-guia__foto img { transform:scale(1.07); }
   .fx-guia__txt { display:flex; flex-direction:column; gap:4px; padding:14px 18px 18px; }
-  .fx-guia__txt b { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.35rem; line-height:1.12; color:var(--ink); }
+  .fx-guia__txt b { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:1.35rem; line-height:1.2; padding-top:.04em; color:var(--ink); }
   .fx-guia:hover .fx-guia__txt b { color:var(--red); }
   .fx-guia__txt small { font-size:.88rem; line-height:1.45; color:var(--muted); }
 

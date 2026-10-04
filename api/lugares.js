@@ -31,7 +31,7 @@ import {
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { esc, cifroes } from './_lib/cartao.js';
-import { layoutListagem, documentoListagem } from './_lib/listagem.js';
+import { layoutListagem, documentoListagem, capaNitida } from './_lib/listagem.js';
 import { notasComunidade } from './_lib/notas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -209,7 +209,7 @@ const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
  * a mesma pele da ficha e da home: css/sello.css + js/sello.js da home, mais o
  * CSS da ficha e o da listagem. `d.lugares` = [{ r, destaque? }].
  */
-function pagina(d) {
+async function pagina(d) {
   const rows = d.lugares.map((it) => it.r);
   const total = d.total || rows.length;
   const media = notaMedia(rows, d.notas);
@@ -220,7 +220,9 @@ function pagina(d) {
   // 'Estão na ordem da curadoria.' é o título da grade; no resumo seria eco.
   const resumo = (corte > 0 ? d.lead.slice(corte + 1).trim() : '')
     .replace(/^(Aqui estão os \d+ primeiros, na ordem da curadoria|Estão na ordem da curadoria)\.\s*/, '');
-  const comFoto = rows.find((r) => r.hero_image);
+  const comFotos = rows.filter((r) => r.hero_image);
+  const urlCapa = await capaNitida(comFotos[0] && comFotos[0].hero_image, comFotos.slice(1, 7).map((r) => r.hero_image));
+  const comFoto = comFotos.find((r) => r.hero_image === urlCapa);
   const capa = comFoto
     ? {
         url: comFoto.hero_image,
@@ -436,7 +438,7 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
   };
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=86400');
-  res.status(200).send(pagina({
+  res.status(200).send(await pagina({
     title, description, h1, lead, canonical, jsonld, trilha,
     kicker: bairro ? 'Ocasião · ' + bairro : 'Ocasião',
     lugares: linhas.map((r) => ({ r, destaque: destaque(slug, r) })),
@@ -637,7 +639,7 @@ export default async function handler(req, res) {
   };
 
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=86400');
-  res.status(200).send(pagina({
+  res.status(200).send(await pagina({
     title: title,
     description: description,
     h1: h1,

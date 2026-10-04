@@ -607,12 +607,18 @@ export const CSS_FICHA = `
    * entre a capa fixa e a folha (que tem margem de 52px para o selo). */
   .fx-hero { align-items:flex-end; min-height:100vh; min-height:100svh; }
   .fx-hero--sem-foto { background:radial-gradient(120% 90% at 20% 0%, #4a0b17 0%, var(--ink) 62%); }
-  .fx-hero__scrim { background:linear-gradient(180deg, rgba(13,17,27,.55) 0%, rgba(13,17,27,.12) 30%, rgba(13,17,27,.55) 62%, rgba(13,17,27,.9) 100%); }
+  /* Duas camadas: o escuro de cima/baixo da home e uma sombra do lado do texto,
+   * para a trilha e o título lerem sobre foto movimentada (um bar, uma vitrine). */
+  .fx-hero__scrim { background:
+      linear-gradient(90deg, rgba(13,17,27,.62) 0%, rgba(13,17,27,.35) 38%, rgba(13,17,27,0) 70%),
+      linear-gradient(180deg, rgba(13,17,27,.55) 0%, rgba(13,17,27,.12) 30%, rgba(13,17,27,.55) 62%, rgba(13,17,27,.9) 100%); }
   .fx-hero .hero__content { --hero-shift:0px; padding-bottom:clamp(110px,15vh,150px); }
   .fx-trilha { font-size:13px; color:rgba(255,255,255,.72); margin:0 0 18px; }
   .fx-trilha a { color:rgba(255,255,255,.9); text-decoration:underline; text-underline-offset:3px; text-decoration-color:rgba(255,255,255,.35); }
   .fx-trilha a:hover { text-decoration-color:#fff; }
-  .fx-titulo { font-size:clamp(2.8rem,7.4vw,6.4rem); line-height:1.04; max-width:15ch; text-wrap:balance; padding-top:.06em; margin-bottom:16px; }
+  /* Entrelinha 1,16: no Anton SC o til e os acentos sobem quase até a linha de
+   * cima — com 1,04 o til do "SÃO" encostava no "Q" de "GUIAS" acima. */
+  .fx-titulo { font-size:clamp(2.8rem,7.4vw,6.4rem); line-height:1.16; max-width:15ch; text-wrap:balance; padding-top:.1em; margin-bottom:16px; }
   .fx-linha { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; margin:0 0 4px; font-size:clamp(.98rem,1.2vw,1.08rem); }
   .fx-linha__pos { font-weight:600; text-decoration:underline; text-underline-offset:5px; text-decoration-thickness:1px;
     text-decoration-color:rgba(255,255,255,.5); transition:text-decoration-color .3s var(--ease); }
@@ -653,7 +659,7 @@ export const CSS_FICHA = `
   .fx-col { min-width:0; }
   .fx-sec { padding:clamp(48px,6vw,72px) 0 8px; scroll-margin-top:160px; }
   .fx-sec + .fx-sec { border-top:1px solid var(--line); }
-  .fx-h2 { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(2rem,3.6vw,3rem); line-height:1.08;
+  .fx-h2 { font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(2rem,3.6vw,3rem); line-height:1.18;
     letter-spacing:.012em; color:var(--ink); margin:0 0 clamp(18px,2vw,26px); }
   .fx-h3 { font-size:1.05rem; font-weight:700; margin:32px 0 12px; }
   .fx-p, .fx-col p { color:var(--muted); font-size:1rem; line-height:1.7; margin:0; }
@@ -665,7 +671,7 @@ export const CSS_FICHA = `
   .fx-take { position:relative; margin-top:28px; padding:28px 28px 28px 30px; border-radius:24px; background:var(--ink); color:#fff; overflow:hidden; }
   .fx-take__aspas { position:absolute; right:22px; top:-34px; font-family:var(--font-disp); font-size:190px; line-height:1; color:var(--red); }
   .fx-take__olho { color:#FF6B7F; }
-  .fx-take__t { position:relative; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(1.4rem,2.2vw,1.8rem); line-height:1.12;
+  .fx-take__t { position:relative; font-family:var(--font-disp); font-weight:400; text-transform:uppercase; font-size:clamp(1.4rem,2.2vw,1.8rem); line-height:1.2;
     margin:0 0 12px; max-width:85%; }
   .fx-take p { position:relative; color:rgba(255,255,255,.82) !important; }
   .fx-check { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
