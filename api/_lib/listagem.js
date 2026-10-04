@@ -24,8 +24,6 @@ import { jsonLd } from './taxonomia.js';
 
 const IC_PIN = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const IC_RELOGIO = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-// Talheres: o destaque de prato ("Peça: ...") nas páginas /pratos/.
-const IC_PRATO = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg>';
 const IC_SETA = '<svg class="fx-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
 function cifroes(n) {
@@ -36,7 +34,13 @@ function cifroes(n) {
 /**
  * O cartão de um lugar. `item` = { r, destaque? } — `r` é a linha de
  * restaurants (com catalog_json) e `destaque` ({ rotulo, valor }) o dado que
- * responde à pergunta da página; sem ele, vale o horário de hoje.
+ * responde à pergunta da página; sem ele, vale o horário de hoje. Com
+ * `soEndereco`, o rodapé do cartão é só o endereço (páginas de prato).
+ *
+ * Sem [data-reveal] (out/2026): com ele o cartão só aparecia depois de 12%
+ * dele passar da linha de 92% da tela — rolando, a fileira que entrava ficava
+ * em branco, e no Safari às vezes não voltava. Numa grade de dezenas de
+ * cartões, aparecer já é melhor que animar.
  */
 function cartaoLugar(item, i, notas, numerar) {
   const r = item.r;
@@ -47,10 +51,11 @@ function cartaoLugar(item, i, notas, numerar) {
   const meta = [c.cuisine, c.neighborhood, preco].filter(Boolean).join(' · ');
   const rua = ruaCurta(r.address);
   const hoje = horarioDeHoje(c.hours);
-  const linhaHora = item.destaque
-    ? '<span>' + (item.destaque.icone === 'prato' ? IC_PRATO : IC_RELOGIO) + '<b>' + esc(item.destaque.rotulo) + '</b> ' + esc(item.destaque.valor) + '</span>'
-    : hoje ? '<span>' + IC_RELOGIO + esc(hoje) + '</span>' : '';
-  return '<article class="fx-lugar" data-reveal data-delay="' + (i % 3) + '">' +
+  const linhaHora = item.soEndereco ? ''
+    : item.destaque
+      ? '<span>' + IC_RELOGIO + '<b>' + esc(item.destaque.rotulo) + '</b> ' + esc(item.destaque.valor) + '</span>'
+      : hoje ? '<span>' + IC_RELOGIO + esc(hoje) + '</span>' : '';
+  return '<article class="fx-lugar">' +
     '<a class="fx-lugar__foto" href="' + esc(href) + '" aria-label="' + esc(r.name) + '">' +
       (r.hero_image
         ? '<img src="' + esc(foto(r.hero_image, 800)) + '" alt="' + esc(r.name) + '" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
@@ -115,7 +120,7 @@ function bloco(b) {
   if (!b || !(b.links || []).length) return '';
   const corpo = b.tipo === 'capas'
     ? '<div class="fx-capas">' + b.links.map((l, i) =>
-        '<a class="fx-guia" href="' + esc(l.href) + '" data-reveal data-delay="' + (i % 3) + '">' +
+        '<a class="fx-guia" href="' + esc(l.href) + '">' +
           '<span class="fx-guia__foto">' + (l.img
             ? '<img src="' + esc(foto(l.img, 800)) + '" alt="" loading="' + (i < 3 ? 'eager' : 'lazy') + '" decoding="async" />'
             : '') + '</span>' +
@@ -267,7 +272,7 @@ export const CSS_LISTA = `
   .fx-lugares { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:22px 20px; }
   .fx-lugar { display:flex; flex-direction:column; border-radius:24px; background:#fff; box-shadow:0 0 0 1px var(--line);
     overflow:hidden; transition:transform .5s var(--ease), box-shadow .5s var(--ease); }
-  .fx-lugar[data-reveal].is-in:hover, .fx-lugar:hover { transform:translateY(-6px); box-shadow:0 28px 54px -28px rgba(13,17,27,.45), 0 0 0 1px var(--line); transition-delay:0s; }
+  .fx-lugar:hover { transform:translateY(-6px); box-shadow:0 28px 54px -28px rgba(13,17,27,.45), 0 0 0 1px var(--line); transition-delay:0s; }
   .fx-lugar__foto { position:relative; display:block; aspect-ratio:4/3; overflow:hidden; background:var(--light); }
   .fx-lugar__foto img { width:100%; height:100%; object-fit:cover; transition:transform 1s var(--ease); }
   .fx-lugar:hover .fx-lugar__foto img { transform:scale(1.07); }

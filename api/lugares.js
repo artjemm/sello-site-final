@@ -502,7 +502,7 @@ async function paginaPrato(res, a, idx, linhasCidades) {
   const media = notaMedia(candidatos, notas);
   const lead = frases(
     'Na curadoria do Sello, ' + total + ' lugares' + naCidade + ' ' + p.frase + '.',
-    'Em cada cartão está o nome do prato como ele aparece na casa. Estão na ordem da curadoria.',
+    'Estão na ordem da curadoria.',
     bairrosTop.length ? 'Bairros com mais opções: ' + listaHumana(bairrosTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
     cozinhasTop.length > 1 ? 'Cozinhas: ' + listaHumana(cozinhasTop.map((e) => e[0] + ' (' + e[1] + ')')) + '.' : '',
     melhor ? 'A nota mais alta da comunidade é de ' + melhor.name + ' (' + decimal(notaDe(melhor, notas)) + ').' : '',
@@ -510,7 +510,7 @@ async function paginaPrato(res, a, idx, linhasCidades) {
   );
   const description = p.busca(naCidade) + ': ' + total + ' lugares onde a curadoria do Sello manda pedir' +
     (bairrosTop.length ? ', de ' + listaHumana(bairrosTop.map((e) => e[0])) + ' a outros bairros' : '') +
-    '. O prato de cada casa, nota e endereço.';
+    '. Nota e endereço de cada casa.';
 
   const trilha = migalhas([
     { nome: 'Início', href: '/' },
@@ -544,7 +544,8 @@ async function paginaPrato(res, a, idx, linhasCidades) {
   res.status(200).send(await pagina({
     title, description, h1, lead, canonical, jsonld, trilha,
     kicker: 'Prato',
-    lugares: linhas.map((r) => ({ r, destaque: { icone: 'prato', rotulo: 'Peça', valor: pratosQueCasam(slug, r).join(' · ') } })),
+    // Só o endereço no rodapé do cartão: o nome do prato na casa está na ficha.
+    lugares: linhas.map((r) => ({ r, soEndereco: true })),
     total,
     notas,
     blocos: blocos.filter(Boolean),
