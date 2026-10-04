@@ -730,19 +730,21 @@ export const CSS_FICHA = `
    * quando a folha branca chega, a barra vira o vidro claro da home. */
   .nav--ficha .nav__inner { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:12px; }
   .nav--ficha .fx-abas { justify-self:center; min-width:0; max-width:100%; }
-  .fx-abas__in { position:relative; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding:4px; border-radius:999px;
-    background:rgba(13,17,27,.22); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); transition:background .35s var(--ease), box-shadow .35s var(--ease); }
+  /* seções soltas na barra, como o menu da home: sem pílula nem trilho */
+  .fx-abas__in { position:relative; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
   .fx-abas__in::-webkit-scrollbar { display:none; }
-  .nav.is-scrolled .fx-abas__in { background:rgba(13,17,27,.045); box-shadow:inset 0 0 0 1px rgba(13,17,27,.05); backdrop-filter:none; -webkit-backdrop-filter:none; }
-  .fx-abas a { position:relative; z-index:1; flex:none; padding:9px 16px; border-radius:999px; font-size:.88rem; font-weight:600; white-space:nowrap;
-    color:rgba(255,255,255,.86); transition:color .4s var(--ease); }
+  .fx-abas a { position:relative; z-index:1; flex:none; padding:10px 14px; font-size:.92rem; font-weight:600; white-space:nowrap;
+    color:rgba(255,255,255,.82); text-shadow:0 1px 10px rgba(0,0,0,.35); transition:color .4s var(--ease); }
+  .nav.is-scrolled .fx-abas a { text-shadow:none; }
   .fx-abas a:hover { color:#fff; }
   .nav.is-scrolled .fx-abas a { color:var(--muted); }
   .nav.is-scrolled .fx-abas a:hover { color:var(--ink); }
-  .fx-abas a.ativo, .nav.is-scrolled .fx-abas a.ativo { color:#fff; }
-  .fx-abas__barra { position:absolute; left:0; top:4px; bottom:4px; width:0; border-radius:999px; background:var(--red);
-    box-shadow:0 8px 20px -10px rgba(227,15,47,.8); transition:transform .6s var(--ease), width .6s var(--ease); }
+  .fx-abas a.ativo { color:#fff; }
+  .nav.is-scrolled .fx-abas a.ativo { color:var(--ink); }
+  /* aba ativa: um traço vermelho embaixo do texto (sem pílula), que desliza */
+  .fx-abas__barra { position:absolute; left:0; bottom:3px; height:2px; width:0; border-radius:2px;
+    background:linear-gradient(var(--red),var(--red)) center / calc(100% - 28px) 100% no-repeat;
+    transition:transform .6s var(--ease), width .6s var(--ease); }
 
   /* hambúrguer: hover troca a cor e alinha as linhas; aberto no toque vira X */
   .nav__mais { position:relative; }
@@ -1019,7 +1021,7 @@ export const CSS_FICHA = `
     .nav--ficha .nav__mais { grid-column:3; }
     .nav--ficha #nav-baixar { grid-column:4; }
     /* a barra tem duas linhas aqui: o texto da capa começa abaixo dela */
-    .fx-hero .hero__content { padding-top:172px; }
+    .fx-hero .hero__content { padding-top:150px; }
     .fx-sec { scroll-margin-top:150px; }
   }
   @media (max-width:640px) {
