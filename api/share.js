@@ -21,6 +21,7 @@ import { COZINHAS, aSlug, MINIMO, destinoFixo } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { notasComunidade, fmtNota } from './_lib/notas.js';
 import { layoutRestaurante, CSS_FICHA, JS_FICHA, ASSETS_HOME, srcsetCapa } from './_lib/ficha.js';
+import { layoutListagem, CSS_LISTA } from './_lib/listagem.js';
 import { fontesExternas } from './_lib/avaliacoes-externas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -591,7 +592,7 @@ function breadcrumbLd(trilha) {
  * responde "esse guia serve para mim?" e o que um assistente cita. Só conta;
  * não opina — a opinião é o intro da curadoria, logo acima.
  */
-function resumoGuia(restaurantes, notas) {
+function textoResumoGuia(restaurantes, notas) {
   const n = restaurantes.length;
   if (n < 3) return '';
   const cont = {};
@@ -624,7 +625,7 @@ function resumoGuia(restaurantes, notas) {
     const media = avaliados.reduce((a, x) => a + x.media, 0) / avaliados.length;
     out.push('Nota média da comunidade: ' + fmtNota(media) + ', entre os ' + avaliados.length + ' lugares já avaliados.');
   }
-  return '<section class="resumo"><h2>Em resumo</h2><p>' + esc(out.join(' ')) + '</p></section>';
+  return out.join(' ');
 }
 
 function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
@@ -663,8 +664,9 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
     .sort((x, y) => x.localeCompare(y, 'pt-BR'))
     .map((b) => '<li><a href="/onde-comer/' + esc(aSlug(b)) + '">Onde comer em ' + esc(b) + '</a></li>')
     .join('');
+  const resumo = textoResumoGuia(restaurantes, notas);
   const body = [
-    resumoGuia(restaurantes, notas),
+    resumo ? '<section class="resumo"><h2>Em resumo</h2><p>' + esc(resumo) + '</p></section>' : '',
     linhas.length
       ? '<section><h2>Os restaurantes deste guia</h2>' + linhas.join('') + '</section>'
       : '',
@@ -697,6 +699,62 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
       }
     : null;
 
+  /* Página no layout de listagem (api/_lib/listagem.js), a mesma pele da
+   * ficha e da home: capa com a foto do guia, o texto da curadoria em
+   * destaque, os lugares NUMERADOS (um guia é uma lista em ordem) e as
+   * pílulas de bairro e de outros guias. */
+  const n = restaurantes.length;
+  const avaliados = restaurantes.map((r) => notas.get(r.slug)).filter(Boolean);
+  const mediaGuia = avaliados.length >= 3
+    ? fmtNota(avaliados.reduce((a, x) => a + x.media, 0) / avaliados.length)
+    : '';
+  const nBairros = new Set(restaurantes.map((r) => r.catalog_json && r.catalog_json.neighborhood).filter(Boolean)).size;
+  const main = layoutListagem({
+    kicker: 'Guia do Sello',
+    h1: g.title,
+    sub: g.subtitle || '',
+    intro: g.intro || '',
+    resumo,
+    trilha: [
+      { nome: 'Início', href: '/' },
+      { nome: 'Guias', href: '/guias' },
+      { nome: g.title, href: path },
+    ],
+    capa: g.cover || (restaurantes.find((r) => r.hero_image) || {}).hero_image
+      ? { url: g.cover || restaurantes.find((r) => r.hero_image).hero_image }
+      : null,
+    fatos: [
+      n + (n === 1 ? ' lugar' : ' lugares'),
+      nBairros > 1 ? nBairros + ' bairros' : '',
+      mediaGuia ? 'Nota média ' + mediaGuia : '',
+    ].filter(Boolean),
+    lugares: restaurantes.map((r) => ({ r })),
+    notas,
+    numerar: true,
+    olhoLugares: n + (n === 1 ? ' lugar' : ' lugares'),
+    tituloLugares: 'Os lugares do guia',
+    blocos: [
+      {
+        olho: 'Por perto',
+        titulo: 'Por bairro',
+        links: [...new Set(restaurantes.map((r) => r.catalog_json && r.catalog_json.neighborhood).filter(Boolean))]
+          .filter((b) => (nBairro[b] || 0) >= MINIMO.bairro)
+          .sort((x, y) => x.localeCompare(y, 'pt-BR'))
+          .map((b) => ({ href: '/onde-comer/' + aSlug(b), txt: 'Onde comer em ' + b })),
+      },
+      {
+        olho: 'Continue',
+        titulo: 'Outros guias',
+        tipo: 'cartoes',
+        links: [
+          ...(outros || []).filter((o) => o && o.slug && o.title)
+            .map((o) => ({ href: '/g/' + o.slug, txt: o.title, desc: 'Guia do Sello' })),
+          { href: '/guias', txt: 'Todos os guias', desc: 'Por cozinha, bairro e ocasião' },
+        ],
+      },
+    ],
+  });
+
   return {
     title: title,
     description: description,
@@ -708,6 +766,8 @@ function fichaGuia(g, itens, outros = [], notas = new Map(), nBairro = {}) {
     path: path,
     trilha: trilha,
     body: body,
+    main: main,
+    css: CSS_LISTA,
     jsonld: [jsonld, breadcrumbLd(trilha)].filter(Boolean),
   };
 }
@@ -804,7 +864,7 @@ ${lds.map((ld) => '<script type="application/ld+json">' + JSON.stringify(ld).rep
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Anton+SC&family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
 ${data.main
-  ? '<link rel="stylesheet" href="' + ASSETS_HOME.css + '" />\n<style>' + CSS_FICHA + '</style>\n' +
+  ? '<link rel="stylesheet" href="' + ASSETS_HOME.css + '" />\n<style>' + CSS_FICHA + (data.css || '') + '</style>\n' +
     (data.image ? '<link rel="preload" as="image" imagesrcset="' + esc(srcsetCapa(data.image)) + '" imagesizes="100vw" fetchpriority="high" />' : '')
   : '<style>' + CSS_PAGINA + CSS_CARTAO + '</style>'}
 </head>

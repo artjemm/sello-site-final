@@ -137,7 +137,8 @@ export function migalhas(itens) {
       item: SITE + it.href,
     })),
   };
-  return { html, ld };
+  // `itens` vai junto para quem monta a trilha com outra marcação (listagem.js).
+  return { html, ld, itens };
 }
 
 export function rodape() {

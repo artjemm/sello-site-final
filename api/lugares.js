@@ -30,7 +30,8 @@ import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
-import { cartao, esc, cifroes, CSS_CARTAO } from './_lib/cartao.js';
+import { esc, cifroes } from './_lib/cartao.js';
+import { layoutListagem, documentoListagem } from './_lib/listagem.js';
 import { notasComunidade } from './_lib/notas.js';
 
 const SUPABASE_URL = 'https://lshecrzhcpqqiaytkemf.supabase.co';
@@ -196,66 +197,64 @@ function erro404(res) {
   );
 }
 
+/** Um bloco de links para a listagem (vira pílulas da home). */
 function pilulas(titulo, links) {
-  const li = links.map((l) => '<li><a href="' + esc(l.href) + '">' + esc(l.txt) + '</a></li>').join('');
-  return li ? '<h2>' + esc(titulo) + '</h2><ul class="rel">' + li + '</ul>' : '';
+  return links.length ? { titulo, links } : null;
 }
 
 const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/**
+ * O documento inteiro. O corpo é o layout de listagem (api/_lib/listagem.js),
+ * a mesma pele da ficha e da home: css/sello.css + js/sello.js da home, mais o
+ * CSS da ficha e o da listagem. `d.lugares` = [{ r, destaque? }].
+ */
 function pagina(d) {
-  return '<!doctype html>\n<html lang="pt-BR">\n<head>\n' +
-    '<meta charset="utf-8" />\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
-    '<title>' + esc(d.title) + '</title>\n' +
-    '<meta name="description" content="' + esc(d.description) + '" />\n' +
-    '<link rel="canonical" href="' + esc(d.canonical) + '" />\n' +
-    '<meta property="og:type" content="website" />\n' +
-    '<meta property="og:site_name" content="Sello" />\n' +
-    '<meta property="og:locale" content="pt_BR" />\n' +
-    '<meta property="og:url" content="' + esc(d.canonical) + '" />\n' +
-    '<meta property="og:title" content="' + esc(d.title) + '" />\n' +
-    '<meta property="og:description" content="' + esc(d.description) + '" />\n' +
-    '<meta property="og:image" content="' + OG_FALLBACK + '" />\n' +
-    jsonLd(d.jsonld) + '\n' +
-    jsonLd(d.trilha.ld) + '\n' +
-    '<link rel="icon" href="/favicon.svg" />\n' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com" />\n' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n' +
-    '<link href="https://fonts.googleapis.com/css2?family=Anton+SC&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet" />\n' +
-    '<style>\n' +
-    '  :root { --red:#E30F2F; --ink:#0D111B; --muted:#4D5461; }\n' +
-    '  * { box-sizing:border-box; }\n' +
-    '  body { margin:0; font-family:"Open Sans",system-ui,sans-serif; color:var(--ink);\n' +
-    '         background:#fff; padding:40px 24px 64px; }\n' +
-    '  main { max-width:680px; margin:0 auto; }\n' +
-    '  .kicker { font-size:13px; color:var(--red); font-weight:700; text-transform:uppercase;\n' +
-    '            letter-spacing:.06em; margin-bottom:6px; }\n' +
-    '  h1 { font-family:"Anton SC",sans-serif; font-weight:400; text-transform:uppercase;\n' +
-    '       font-size:30px; line-height:1.14; margin:0 0 12px; }\n' +
-    '  .lead { color:var(--muted); font-size:16px; line-height:1.55; margin:0 0 26px; }\n' +
-    '  h2 { font-family:"Anton SC",sans-serif; font-weight:400; text-transform:uppercase;\n' +
-    '       font-size:16px; letter-spacing:.02em; margin:36px 0 10px; }\n' +
-    '  .rel { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }\n' +
-    '  .rel a { display:inline-block; border:1.5px solid #E4E4E7; border-radius:999px;\n' +
-    '           padding:7px 13px; font-size:13px; color:var(--ink); text-decoration:none; }\n' +
-    '  .rel a:hover { border-color:var(--red); color:var(--red); }\n' +
-    '  .foot { margin-top:40px; text-align:center; font-size:14px; }\n' +
-    '  .foot a { color:var(--red); font-weight:700; text-decoration:none; }\n' +
-    CSS_CARTAO +
-    CSS_NAV +
-    '</style>\n</head>\n<body>\n  <main>\n' +
-    '    ' + d.trilha.html + '\n' +
-    '    <div class="kicker">' + esc(d.kicker) + '</div>\n' +
-    '    <h1>' + esc(d.h1) + '</h1>\n' +
-    '    <p class="lead">' + esc(d.lead) + '</p>\n' +
-    '    ' + d.cartoes + '\n' +
-    '    ' + d.relacionados + '\n' +
-    '    <div class="foot"><a href="/baixar">Baixar o app</a> · <a href="/guias">Ver os guias</a></div>\n' +
-    '  </main>\n' +
-    '  ' + rodape() + '\n' +
-    '<script defer src="/_vercel/insights/script.js"></script>\n' +
-    '</body>\n</html>';
+  const rows = d.lugares.map((it) => it.r);
+  const total = d.total || rows.length;
+  const media = notaMedia(rows, d.notas);
+  const faixa = faixaMaisComum(rows);
+  // A primeira frase do lead sobe para a capa; o resto fica no "Em resumo".
+  const corte = d.lead.search(/\.\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])/);
+  const sub = corte > 0 ? d.lead.slice(0, corte + 1) : d.lead;
+  // 'Estão na ordem da curadoria.' é o título da grade; no resumo seria eco.
+  const resumo = (corte > 0 ? d.lead.slice(corte + 1).trim() : '')
+    .replace(/^(Aqui estão os \d+ primeiros, na ordem da curadoria|Estão na ordem da curadoria)\.\s*/, '');
+  const comFoto = rows.find((r) => r.hero_image);
+  const capa = comFoto
+    ? {
+        url: comFoto.hero_image,
+        credito: (comFoto.catalog_json && comFoto.catalog_json.hero_attribution &&
+          comFoto.catalog_json.hero_attribution.attribution_text) || '',
+      }
+    : null;
+  const corpo = layoutListagem({
+    kicker: d.kicker,
+    h1: d.h1,
+    sub,
+    resumo,
+    trilha: d.trilha.itens,
+    capa,
+    fatos: [
+      total + (total === 1 ? ' lugar' : ' lugares'),
+      media ? 'Nota média ' + media : '',
+      faixa ? 'Faixa mais comum ' + faixa : '',
+    ].filter(Boolean),
+    lugares: d.lugares,
+    notas: d.notas,
+    olhoLugares: total > rows.length ? 'Os ' + rows.length + ' primeiros de ' + total : rows.length + ' lugares',
+    tituloLugares: 'Na ordem da curadoria',
+    blocos: d.blocos,
+  });
+  return documentoListagem({
+    title: d.title,
+    description: d.description,
+    canonical: d.canonical,
+    imagem: capa ? capa.url : null,
+    jsonlds: [d.jsonld, d.trilha.ld],
+    capaUrl: capa ? capa.url : null,
+    corpo,
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -440,8 +439,10 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
   res.status(200).send(pagina({
     title, description, h1, lead, canonical, jsonld, trilha,
     kicker: bairro ? 'Ocasião · ' + bairro : 'Ocasião',
-    cartoes: linhas.map((r) => cartao(r, notas, destaque(slug, r))).join(''),
-    relacionados: blocos.join('\n'),
+    lugares: linhas.map((r) => ({ r, destaque: destaque(slug, r) })),
+    total,
+    notas,
+    blocos: blocos.filter(Boolean),
   }));
 }
 
@@ -645,7 +646,8 @@ export default async function handler(req, res) {
     canonical: canonical,
     jsonld: jsonld,
     trilha: trilha,
-    cartoes: rows.map((r) => cartao(r, notas)).join(''),
-    relacionados: blocos.join('\n'),
+    lugares: rows.map((r) => ({ r })),
+    notas,
+    blocos: blocos.filter(Boolean),
   }));
 }

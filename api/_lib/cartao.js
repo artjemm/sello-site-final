@@ -27,7 +27,7 @@ export function cifroes(n) {
 
 /** Horário de HOJE, no fuso de São Paulo — o servidor da Vercel roda em UTC, e
  *  sem isso a página diria "quarta" ainda na terça à noite para quem lê aqui. */
-function horarioDeHoje(hours) {
+export function horarioDeHoje(hours) {
   if (!Array.isArray(hours) || !hours.length) return '';
   const agora = new Date(Date.now() - 3 * 60 * 60 * 1000);
   const hoje = DIAS[agora.getUTCDay()];
@@ -57,7 +57,7 @@ function miniatura(u, px) {
 
 /** Só a rua e o número: o endereço completo do catálogo traz bairro, cidade,
  *  UF e CEP, e repetir isso em 90 cartões da mesma página é ruído. */
-function ruaCurta(endereco) {
+export function ruaCurta(endereco) {
   return String(endereco ?? '').split(' - ')[0].trim();
 }
 

@@ -328,6 +328,64 @@ function pilulas(itens) {
     : '';
 }
 
+/* ══════════════════════ Casca da home (ficha e listagens) ══════════════════════
+ * As peças de cima e de baixo de toda página gerada: a barra da home, o fecho
+ * ("Seu próximo restaurante") com o rodapé vermelho, a barra fixa de download
+ * e o popup de download da home. Uma fonte só, para a ficha e as listagens
+ * (bairro, cozinha, ocasião, guia) não divergirem. */
+
+export function navHome() {
+  return '' +
+  '<header class="nav" id="nav"><div class="nav__inner">' +
+    '<a class="nav__brand" href="/" aria-label="Sello — início"><span class="nav__wordmark" aria-hidden="true"></span></a>' +
+    '<nav class="nav__menu" aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>' +
+    botao('/baixar', 'Baixar o app', 'btn--accent btn--app') +
+  '</div></header>';
+}
+
+export function fechoHome() {
+  return '' +
+    // O fecho da home: manifesto + botão, e o rodapé vermelho subindo por cima.
+    '<section class="cta-final">' +
+      '<div class="wrap cta-final__inner">' +
+        '<div class="cta-final__head">' +
+          '<h2 class="anton cta-final__title" data-split>SEU PRÓXIMO<br />RESTAURANTE<br />JÁ ESTÁ TE ESPERANDO</h2>' +
+          '<img class="cta-final__star" src="/assets/img/cta-star.svg" alt="" aria-hidden="true" width="188" height="177" loading="lazy" decoding="async" />' +
+        '</div>' +
+        '<p class="cta-final__sub" data-reveal data-delay="1">Curadoria editorial, inteligência e uma comunidade apaixonada por gastronomia. Tudo para ajudar você a escolher restaurantes que realmente valem a pena.</p>' +
+        '<div class="cta-final__btn" data-reveal data-delay="2">' + botao('/baixar', 'Baixar o app', 'btn--accent btn--app') + '</div>' +
+      '</div>' +
+    '</section>' +
+      '<footer class="finalcta">' +
+        '<div class="wrap fc">' +
+          '<div class="fc__top">' +
+            '<nav class="fc__cols" aria-label="Rodapé">' +
+              '<div class="fc__col"><h4 class="anton">Produto</h4><a href="/baixar">Baixe o aplicativo</a><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></div>' +
+              '<div class="fc__col"><h4 class="anton">Empresa</h4><a href="/sobre">Sobre o Sello</a><a href="mailto:contato@selloapp.com.br">Nos contate</a></div>' +
+              '<div class="fc__col"><h4 class="anton">Socials</h4><a href="https://instagram.com/sello_oficial" target="_blank" rel="noopener">Instagram</a></div>' +
+            '</nav>' +
+            '<div class="fc__qr" data-reveal data-delay="1"><div class="fc__qrcard"><img src="/assets/img/qr.png?v=2" alt="QR para baixar o aplicativo Sello" width="640" height="640" loading="lazy" decoding="async" /></div><span>Baixar Aplicativo</span></div>' +
+          '</div>' +
+          '<div class="fc__legal"><span>2026 SELLO — ALL RIGHTS RESERVED</span><a href="/privacidade">POLÍTICA DE PRIVACIDADE</a><a href="/termos">TERMOS DE USO</a></div>' +
+        '</div>' +
+        '<span class="fc__wm" aria-hidden="true"></span>' +
+      '</footer>';
+}
+
+export function barraEModalDownload() {
+  return '' +
+  /* Barra fixa de download. O botão abre o popup de download da home (o
+   * js/sello.js abre o #dl-modal em todo [data-cta="download"]); sem JS, o
+   * href leva para /baixar. */
+  '<div class="fx-barra-app" id="fx-barra-app" role="complementary" aria-label="Baixar o app do Sello">' +
+    '<span class="fx-barra-app__selo" aria-hidden="true"></span>' +
+    '<p><strong>Salve e avalie no app</strong><span>Mapa, listas e a nota de quem foi.</span></p>' +
+    '<a class="btn btn--accent fx-barra-app__baixar" id="fx-baixar" href="/baixar" data-cta="download"><span class="btn__t">Baixar o app</span></a>' +
+  '</div>' +
+  // O popup de download da home, igual: selo, QR e os botões das lojas.
+  '<div class="dlm" id="dl-modal" hidden><div class="dlm__scrim" data-dl-close></div><div class="dlm__card" role="dialog" aria-modal="true" aria-label="Baixar o app Sello" aria-describedby="dlm-d"><button class="dlm__x" type="button" data-dl-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button><span class="dlm__seal" aria-hidden="true"><img src="/assets/img/seal.svg" alt="" decoding="async" /></span><p class="dlm__d" id="dlm-d">Leia o código para baixar o app Sello</p><div class="dlm__qr"><img src="/assets/img/qr.png?v=2" alt="QR Code para baixar o app Sello" decoding="async" /></div><div class="dlm__stores"><a class="btn dlm__store" href="https://apps.apple.com/br/app/sello/id6791353216" target="_blank" rel="noopener" data-store="ios"><svg class="ico-apple" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg><span class="dlm__store-t"><small>Baixar na</small><b>App Store</b></span></a><a class="btn dlm__store" href="https://play.google.com/store/apps/details?id=com.sello.app" target="_blank" rel="noopener" data-store="android"><svg class="btn__ico" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M325.3 234.3 104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg><span class="dlm__store-t"><small>Disponível no</small><b>Google Play</b></span></a></div></div></div>';
+}
+
 /**
  * O conteúdo do <body>: barra, capa, folha com abas, conteúdo e rodapé da
  * home, mais a barra de app (celular) e o visualizador de fotos.
@@ -354,12 +412,7 @@ export function layoutRestaurante(r, c, d) {
     ? secao('', 'Por perto', 'Também em ' + d.bairro, pilulas(d.vizinhos))
     : '';
 
-  return '' +
-  '<header class="nav" id="nav"><div class="nav__inner">' +
-    '<a class="nav__brand" href="/" aria-label="Sello — início"><span class="nav__wordmark" aria-hidden="true"></span></a>' +
-    '<nav class="nav__menu" aria-label="Principal"><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></nav>' +
-    botao('/baixar', 'Baixar o app', 'btn--accent btn--app') +
-  '</div></header>' +
+  return navHome() +
   '<main id="top">' +
     capa(r, c, d, fotos) +
     '<div class="sheet fx-folha">' +
@@ -377,42 +430,9 @@ export function layoutRestaurante(r, c, d) {
         lateral(r, c, d) +
       '</div>' +
     '</div>' +
-    // O fecho da home: manifesto + botão, e o rodapé vermelho subindo por cima.
-    '<section class="cta-final">' +
-      '<div class="wrap cta-final__inner">' +
-        '<div class="cta-final__head">' +
-          '<h2 class="anton cta-final__title" data-split>SEU PRÓXIMO<br />RESTAURANTE<br />JÁ ESTÁ TE ESPERANDO</h2>' +
-          '<img class="cta-final__star" src="/assets/img/cta-star.svg" alt="" aria-hidden="true" width="188" height="177" loading="lazy" decoding="async" />' +
-        '</div>' +
-        '<p class="cta-final__sub" data-reveal data-delay="1">Curadoria editorial, inteligência e uma comunidade apaixonada por gastronomia. Tudo para ajudar você a escolher restaurantes que realmente valem a pena.</p>' +
-        '<div class="cta-final__btn" data-reveal data-delay="2">' + botao('/baixar', 'Baixar o app', 'btn--accent btn--app') + '</div>' +
-      '</div>' +
-    '</section>' +
-      '<footer class="finalcta">' +
-        '<div class="wrap fc">' +
-          '<div class="fc__top">' +
-            '<nav class="fc__cols" aria-label="Rodapé">' +
-              '<div class="fc__col"><h4 class="anton">Produto</h4><a href="/baixar">Baixe o aplicativo</a><a href="/guias">Guias</a><a href="/guias#bairros">Bairros</a><a href="/guias#ocasioes">Ocasiões</a></div>' +
-              '<div class="fc__col"><h4 class="anton">Empresa</h4><a href="/sobre">Sobre o Sello</a><a href="mailto:contato@selloapp.com.br">Nos contate</a></div>' +
-              '<div class="fc__col"><h4 class="anton">Socials</h4><a href="https://instagram.com/sello_oficial" target="_blank" rel="noopener">Instagram</a></div>' +
-            '</nav>' +
-            '<div class="fc__qr" data-reveal data-delay="1"><div class="fc__qrcard"><img src="/assets/img/qr.png?v=2" alt="QR para baixar o aplicativo Sello" width="640" height="640" loading="lazy" decoding="async" /></div><span>Baixar Aplicativo</span></div>' +
-          '</div>' +
-          '<div class="fc__legal"><span>2026 SELLO — ALL RIGHTS RESERVED</span><a href="/privacidade">POLÍTICA DE PRIVACIDADE</a><a href="/termos">TERMOS DE USO</a></div>' +
-        '</div>' +
-        '<span class="fc__wm" aria-hidden="true"></span>' +
-      '</footer>' +
+    fechoHome() +
   '</main>' +
-  /* Barra fixa de download. O botão abre o popup de download da home (o
-   * js/sello.js abre o #dl-modal em todo [data-cta="download"]); sem JS, o
-   * href leva para /baixar. */
-  '<div class="fx-barra-app" id="fx-barra-app" role="complementary" aria-label="Baixar o app do Sello">' +
-    '<span class="fx-barra-app__selo" aria-hidden="true"></span>' +
-    '<p><strong>Salve e avalie no app</strong><span>Mapa, listas e a nota de quem foi.</span></p>' +
-    '<a class="btn btn--accent fx-barra-app__baixar" id="fx-baixar" href="/baixar" data-cta="download"><span class="btn__t">Baixar o app</span></a>' +
-  '</div>' +
-  // O popup de download da home, igual: selo, QR e os botões das lojas.
-  '<div class="dlm" id="dl-modal" hidden><div class="dlm__scrim" data-dl-close></div><div class="dlm__card" role="dialog" aria-modal="true" aria-label="Baixar o app Sello" aria-describedby="dlm-d"><button class="dlm__x" type="button" data-dl-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button><span class="dlm__seal" aria-hidden="true"><img src="/assets/img/seal.svg" alt="" decoding="async" /></span><p class="dlm__d" id="dlm-d">Leia o código para baixar o app Sello</p><div class="dlm__qr"><img src="/assets/img/qr.png?v=2" alt="QR Code para baixar o app Sello" decoding="async" /></div><div class="dlm__stores"><a class="btn dlm__store" href="https://apps.apple.com/br/app/sello/id6791353216" target="_blank" rel="noopener" data-store="ios"><svg class="ico-apple" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg><span class="dlm__store-t"><small>Baixar na</small><b>App Store</b></span></a><a class="btn dlm__store" href="https://play.google.com/store/apps/details?id=com.sello.app" target="_blank" rel="noopener" data-store="android"><svg class="btn__ico" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true"><path d="M325.3 234.3 104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg><span class="dlm__store-t"><small>Disponível no</small><b>Google Play</b></span></a></div></div></div>' +
+  barraEModalDownload() +
   '<div class="fx-lb" id="fx-lb" hidden aria-modal="true" role="dialog" aria-label="Fotos">' +
     '<button type="button" class="fx-lb__x" aria-label="Fechar">' + icone('x') + '</button>' +
     '<button type="button" class="fx-lb__nav fx-lb__nav--esq" aria-label="Anterior">' + icone('esq') + '</button>' +
@@ -578,7 +598,9 @@ export const CSS_FICHA = `
   .fx-ic { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 
   /* ── capa (ajustes sobre o .hero da home) ── */
-  .fx-hero { align-items:flex-end; }
+  /* Altura da tela, como o .hero da home: mais baixa, sobra uma faixa escura
+   * entre a capa fixa e a folha (que tem margem de 52px para o selo). */
+  .fx-hero { align-items:flex-end; min-height:100vh; min-height:100svh; }
   .fx-hero--sem-foto { background:radial-gradient(120% 90% at 20% 0%, #4a0b17 0%, var(--ink) 62%); }
   .fx-hero__scrim { background:linear-gradient(180deg, rgba(13,17,27,.55) 0%, rgba(13,17,27,.12) 30%, rgba(13,17,27,.55) 62%, rgba(13,17,27,.9) 100%); }
   .fx-hero .hero__content { --hero-shift:0px; padding-bottom:clamp(110px,15vh,150px); }
@@ -830,7 +852,7 @@ export const CSS_FICHA = `
   @media (max-width:640px) {
     .fx-titulo { font-size:clamp(2.5rem,12vw,3.4rem); }
     .fx-acoes .btn { flex:1 1 100%; }
-    .fx-hero__credito { bottom:auto; top:96px; }
+    .fx-hero__credito { top:auto; bottom:16px; right:16px; }
     .fx-bento { grid-template-columns:repeat(2,1fr); grid-auto-rows:130px; }
     .fx-take__aspas { font-size:130px; top:-20px; }
     .fx-lb__nav { display:none !important; }
