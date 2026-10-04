@@ -19,7 +19,7 @@
 
 import { TITULOS_DE_BUSCA } from './_lib/titulos-de-busca.js';
 import {
-  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, cozinhasAlvo, bairrosAlvo,
+  COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, cozinhasAlvo, bairrosAlvo, destinoBairro,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes } from './_lib/ocasioes.js';
 import { PRATOS, contarPratos, destinoPrato } from './_lib/pratos.js';
@@ -50,7 +50,7 @@ function descoberta(rows) {
   const bairros = Object.keys(nBairro)
     .filter((b) => nBairro[b] >= MINIMO.bairro)
     .sort(porNome)
-    .map((b) => ({ href: '/onde-comer/' + aSlug(b), txt: b }));
+    .map((b) => ({ href: destinoBairro(b), txt: b }));
   /* Cozinhas: a página própria, ou o guia que a substitui. O guia entra aqui
    * também (além do cartão dele lá em cima) porque o texto do link importa: é
    * "pizzarias" apontando para "Massa Crítica" que diz ao Google do que o

@@ -28,7 +28,7 @@
 
 import {
   COZINHAS, aSlug, MINIMO, destinoFixo, mapaDeCidades, cidadeDasLinhas, migalhas, rodape, jsonLd, CSS_NAV,
-  membrosCozinha, cozinhasAlvo, membrosBairro, bairrosAlvo, filtroIn, REGIOES, GRUPOS_COZINHA, emBairro,
+  membrosCozinha, cozinhasAlvo, membrosBairro, bairrosAlvo, filtroIn, REGIOES, GRUPOS_COZINHA, emBairro, GUIA_DA_REGIAO, destinoBairro,
 } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { PRATOS, MINIMO_PRATO, pratosQueCasam, contarPratos, destinoPrato } from './_lib/pratos.js';
@@ -389,7 +389,7 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
     ? [
         { nome: 'Início', href: '/' },
         { nome: 'Bairros', href: '/guias#bairros' },
-        { nome: bairro, href: '/onde-comer/' + aSlug(bairro) },
+        { nome: bairro, href: destinoBairro(bairro) },
         { nome: o.nome, href: '/ocasioes/' + slug + '/' + aSlug(bairro) },
       ]
     : [
@@ -411,7 +411,7 @@ async function paginaOcasiao(res, a, b, idx, linhasCidades) {
       .filter((x) => x !== slug && idx.oc.existeBairro(x, bairro))
       .map((x) => ({ href: '/ocasioes/' + x + '/' + aSlug(bairro), txt: OCASIOES[x].titulo(' ' + emBairro(bairro)) }))));
     blocos.push(pilulas('Veja também', [
-      { href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo ' + emBairro(bairro) },
+      { href: destinoBairro(bairro), txt: 'Tudo ' + emBairro(bairro) },
       geral ? { href: geral, txt: o.guia ? o.nome + ': o guia do Sello' : o.nome + (cidade ? ' em ' + cidade.nome : ', todos') } : null,
       todosOsGuias,
     ].filter(Boolean)));
@@ -567,6 +567,12 @@ export default async function handler(req, res) {
   const tax = cozinha ? COZINHAS[cozinha] : null;
 
   if (tipo === 'bairro' ? !bairro : !cozinha) return erro404(res);
+  // Região que um guia já disputa (Centro → "O Centro das atenções") é do guia.
+  if (tipo === 'bairro' && GUIA_DA_REGIAO[bairro]) {
+    res.setHeader('Location', '/g/' + GUIA_DA_REGIAO[bairro]);
+    res.status(308).end();
+    return;
+  }
   if (tipo === 'combo' && !bairro) return erro404(res);
 
   // Cozinha que um guia (ou uma ocasião) já disputa não ganha página própria
@@ -611,7 +617,7 @@ export default async function handler(req, res) {
     const cozinhasTop = maisFrequentes(rows, 'cuisine', 3);
     h1 = 'Onde comer ' + emBairro(bairro);
     title = 'Onde comer ' + emBairro(bairro) + ufTitulo + ': ' + rows.length + ' restaurantes | Sello';
-    canonical = SITE + '/onde-comer/' + aSlug(bairro);
+    canonical = SITE + destinoBairro(bairro);
     kicker = 'Bairro';
     lead = frases(
       rows.length + ' lugares ' + emBairro(bairro) + naCidadeAposto + ' selecionados pelo Sello, na ordem da curadoria.',
@@ -627,7 +633,7 @@ export default async function handler(req, res) {
     trilha = migalhas([
       { nome: 'Início', href: '/' },
       { nome: 'Bairros', href: '/guias#bairros' },
-      { nome: bairro, href: '/onde-comer/' + aSlug(bairro) },
+      { nome: bairro, href: destinoBairro(bairro) },
     ]);
   } else if (tipo === 'cozinha') {
     const bairrosTop = maisFrequentes(rows, 'neighborhood', 3);
@@ -669,7 +675,7 @@ export default async function handler(req, res) {
     /* O degrau do meio é o bairro, quando ele tem página; se não tiver, é a
      * cozinha (a página dela ou o guia que a substitui). */
     const meio = bairroOk(idx, bairro)
-      ? [{ nome: 'Bairros', href: '/guias#bairros' }, { nome: bairro, href: '/onde-comer/' + aSlug(bairro) }]
+      ? [{ nome: 'Bairros', href: '/guias#bairros' }, { nome: bairro, href: destinoBairro(bairro) }]
       : destinoCozinha(idx, cozinha)
         ? [{ nome: 'Cozinhas', href: '/guias#cozinhas' }, { nome: maiuscula(tax.plural), href: destinoCozinha(idx, cozinha) }]
         : [{ nome: 'Guias', href: '/guias' }];
@@ -693,12 +699,12 @@ export default async function handler(req, res) {
       .filter((o) => idx.oc.existeBairro(o, bairro))
       .map((o) => ({ href: '/ocasioes/' + o + '/' + aSlug(bairro), txt: OCASIOES[o].titulo(' ' + emBairro(bairro)) }))));
     blocos.push(pilulas('Outros bairros perto', [
-      ...bairrosPerto(idx, bairro, 8).map((nb) => ({ href: '/onde-comer/' + aSlug(nb), txt: 'Onde comer ' + emBairro(nb) })),
+      ...bairrosPerto(idx, bairro, 8).map((nb) => ({ href: destinoBairro(nb), txt: 'Onde comer ' + emBairro(nb) })),
       todosOsGuias,
     ]));
   } else if (tipo === 'combo') {
     const tudo = [];
-    if (bairroOk(idx, bairro)) tudo.push({ href: '/onde-comer/' + aSlug(bairro), txt: 'Tudo ' + emBairro(bairro) });
+    if (bairroOk(idx, bairro)) tudo.push({ href: destinoBairro(bairro), txt: 'Tudo ' + emBairro(bairro) });
     const dest = destinoCozinha(idx, cozinha);
     if (dest) tudo.push({ href: dest, txt: (tax.guia ? 'O guia de ' : 'Todos os ') + tax.plural });
     tudo.push(todosOsGuias);

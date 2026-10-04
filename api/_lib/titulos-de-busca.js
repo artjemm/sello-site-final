@@ -50,7 +50,7 @@ export const TITULOS_DE_BUSCA = {
 
   // ── recorte geográfico ────────────────────────────────────────────────────
   'o-eixo-gastronomico':             'Onde comer em Pinheiros, Jardins e Itaim',
-  'centro-das-atencoes':             'Onde comer no Centro de São Paulo',
+  'centro-das-atencoes':             'Restaurantes no Centro de SP: onde comer',
   'zona-sul-sem-escalas':            'Onde comer na Zona Sul de São Paulo',
   'muito-alem-da-marginal':          'Onde comer na Zona Leste de São Paulo',
   'o-lado-norte-da-mesa':            'Onde comer na Zona Norte de São Paulo',
@@ -72,7 +72,7 @@ export const TITULOS_DE_BUSCA = {
   // ── REVER: conceito editorial, sem assunto que o dado revele ──────────────
   // A proposta abaixo é chute educado. Quem escreveu o guia sabe o que ele
   // responde melhor do que a estatística das cozinhas — vale reescrever.
-  'top-25-melhores':                 'Melhores restaurantes em SP: os 25 do Sello',
+  'top-25-melhores':                 'Melhores restaurantes em SP: os 10 do Sello',
   'onde-comer-sem-errar':            'Restaurantes bons de verdade em São Paulo',
   'a-proxima-reserva':               'Restaurantes para reservar em São Paulo',
   'so-funciona-em-sao-paulo':        'Restaurantes que só existem em São Paulo',

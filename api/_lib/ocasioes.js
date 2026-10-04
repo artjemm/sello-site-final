@@ -117,7 +117,8 @@ export const OCASIOES = {
   'alta-gastronomia': {
     nome: 'Alta gastronomia',
     titulo: (onde) => 'Alta gastronomia' + onde,
-    busca: (onde) => 'Restaurantes chiques e alta gastronomia' + onde,
+    // Título curto (até ~60): "Restaurantes chiques em SP: 43 lugares | Sello".
+    busca: (onde) => 'Restaurantes chiques' + onde,
     criterio: 'estão na faixa de preço mais alta do Sello ($$$$, de quatro)',
     teste: (s) => s.preco === 4,
   },

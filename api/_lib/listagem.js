@@ -225,8 +225,23 @@ export function layoutListagem(d) {
  * listagem, e os scripts da home (Lenis, sello.js), da ficha e de medição.
  * As fichas e os guias /g/ passam pelo page() de share.js, que faz o mesmo.
  */
+/** Descrição de até 160 caracteres (o Google corta o resto no meio da palavra).
+ *  Corta na última frase inteira que cabe; sem frase, na última vírgula ou
+ *  espaço, fechando com ponto. */
+export function descricaoCurta(s, max = 160) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const corte = t.slice(0, max);
+  const fimFrase = corte.lastIndexOf('. ');
+  if (fimFrase > max * 0.5) return corte.slice(0, fimFrase + 1);
+  const pausa = Math.max(corte.lastIndexOf(', '), corte.lastIndexOf(': '), corte.lastIndexOf(' — '));
+  const ate = pausa > max * 0.5 ? pausa : corte.lastIndexOf(' ');
+  return corte.slice(0, ate).replace(/[\s,;:—-]+$/, '') + '.';
+}
+
 export function documentoListagem({ title, description, canonical, imagem, jsonlds = [], capaUrl, corpo }) {
   const og = imagem || 'https://selloapp.com.br/assets/img/hero.jpg';
+  description = descricaoCurta(description);
   return '<!doctype html>\n<html lang="pt-BR">\n<head>\n' +
     '<meta charset="utf-8" />\n' +
     '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +

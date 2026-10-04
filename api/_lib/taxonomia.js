@@ -72,6 +72,12 @@ export const REGIOES = {
 const EM_REGIAO = { Jardins: 'nos Jardins', Centro: 'no Centro' };
 export const emBairro = (b) => EM_REGIAO[b] || 'em ' + b;
 
+/** Região que um guia editorial já disputa: a página dela redireciona (308)
+ *  para o guia, como cozinha com guia (não canibalizar). */
+export const GUIA_DA_REGIAO = { Centro: 'centro-das-atencoes' };
+/** Para onde aponta o link de um bairro/região: o guia que o substitui ou a página. */
+export const destinoBairro = (b) => (GUIA_DA_REGIAO[b] ? '/g/' + GUIA_DA_REGIAO[b] : '/onde-comer/' + aSlug(b));
+
 /** As categorias que uma página de cozinha mostra. */
 export const membrosCozinha = (c) => GRUPOS_COZINHA[c] || [c];
 /** As páginas de cozinha em que uma casa desta categoria conta (ela + grupos). */

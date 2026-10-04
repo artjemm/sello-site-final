@@ -26,7 +26,7 @@
  *   - Guia usa `lists.updated_at`, que só se move quando o guia é editado.
  */
 
-import { COZINHAS, aSlug, MINIMO, destinoFixo, cozinhasAlvo, bairrosAlvo } from './_lib/taxonomia.js';
+import { COZINHAS, aSlug, MINIMO, destinoFixo, cozinhasAlvo, bairrosAlvo, GUIA_DA_REGIAO } from './_lib/taxonomia.js';
 import { OCASIOES, COLS_OCASIAO, contarOcasioes, atende } from './_lib/ocasioes.js';
 import { PRATOS, MINIMO_PRATO, pratosQueCasam } from './_lib/pratos.js';
 
@@ -147,7 +147,7 @@ export default async function handler(req, res) {
       for (const y of cs) for (const x of bs) somar(porCombo, y + '|' + x, d);
     }
     for (const [b, e] of Object.entries(porBairro)) {
-      if (e.n >= MINIMO.bairro) {
+      if (e.n >= MINIMO.bairro && !GUIA_DA_REGIAO[b]) {
         entradas.push({ loc: '/onde-comer/' + aSlug(b), lastmod: maisRecente(e.datas), freq: 'weekly', prio: '0.8' });
       }
     }
