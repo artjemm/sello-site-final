@@ -3,10 +3,11 @@
 Landing page estática (HTML/CSS/JS puro) da Sello.
 
 ## Deploy
-- Servida pelo nginx em **`/sello-v2/`** a partir de **`/var/www/html/sello-v2/`** (este diretório).
-- **Edição é in-place:** edite os arquivos aqui mesmo — o nginx serve direto, não há build.
-- O nginx tem **no-cache** em `/sello-v2/` (um `sub_filter` global removia `Last-Modified`/`ETag` e servia HTML velho). Mesmo assim, ao trocar um asset, **bumpe o `?v=`** no `index.html` pra furar o cache do browser.
-- URL pública: http://95.179.179.29/sello-v2/
+- **Vercel**, deploy automático de cada push no `main` deste repo. Não há build.
+- URL pública: https://selloapp.com.br (www redireciona para o apex).
+- Ao trocar um asset, **bumpe o `?v=`** no `index.html` (e em `ASSETS_HOME` de `api/_lib/ficha.js`) pra furar o cache do browser.
+- Conferir um deploy: `gh api repos/artjemm/sello-site-final/commits/<sha>/status`.
+- Regras de publicação e travas do agente: **`CLAUDE.md`**.
 
 ## Estrutura
 - `index.html` — página única
